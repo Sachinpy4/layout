@@ -11,21 +11,14 @@ import {
   Typography,
   message,
   Space,
-  InputNumber,
-  Checkbox,
   Divider,
   Tag,
   Alert,
-  Tooltip,
-  Spin
 } from 'antd';
 import {
   ArrowLeftOutlined,
-  UserOutlined,
   ShopOutlined,
-  CalculatorOutlined,
   CheckCircleOutlined,
-  PlusOutlined,
   DeleteOutlined
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
@@ -39,33 +32,8 @@ import { calculateStallArea, calculateBaseAmount, formatStallDimensions } from '
 
 const { Title, Text } = Typography;
 const { Option } = Select;
-const { TextArea } = Input;
 
 // Types for booking creation
-interface BookingFormData {
-  exhibitionId: string;
-  exhibitorId: string;
-  stallIds: string[];
-  customerName: string;
-  customerEmail: string;
-  customerPhone: string;
-  customerAddress: string;
-  customerGSTIN?: string;
-  customerPAN?: string;
-  companyName: string;
-  discount?: {
-    name: string;
-    type: 'percentage' | 'fixed';
-    value: number;
-  };
-  amount: number;
-  extraAmenities?: Array<{
-    id: string;
-    name: string;
-    rate: number;
-    quantity: number;
-  }>;
-}
 
 interface StallWithDetails extends Stall {
   stallNumber: string;
@@ -87,7 +55,6 @@ const CreateBookingPage: React.FC = () => {
   const navigate = useNavigate();
   const [form] = Form.useForm();
   const [currentStep, setCurrentStep] = useState(0);
-  const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
   // Data states
@@ -98,12 +65,6 @@ const CreateBookingPage: React.FC = () => {
   const [availableStalls, setAvailableStalls] = useState<StallWithDetails[]>([]);
   const [selectedStalls, setSelectedStalls] = useState<string[]>([]);
   const [selectedDiscountId, setSelectedDiscountId] = useState<string | undefined>();
-  const [extraAmenities, setExtraAmenities] = useState<Array<{
-    id: string;
-    name: string;
-    rate: number;
-    quantity: number;
-  }>>([]);
 
   // Loading states
   const [loadingExhibitions, setLoadingExhibitions] = useState(false);
@@ -129,21 +90,8 @@ const CreateBookingPage: React.FC = () => {
     }
   };
 
-  // Fetch exhibitors
-  const fetchExhibitors = async () => {
-    try {
-      setLoadingExhibitors(true);
-      const response = await exhibitorService.getExhibitors();
-      setExhibitors(response.data || []);
-    } catch (error: any) {
-      message.error(error.message || 'Failed to fetch exhibitors');
-    } finally {
-      setLoadingExhibitors(false);
-    }
-  };
-
   // Fetch exhibitors for selected exhibition
-  const fetchExhibitorsForExhibition = async (exhibitionId: string) => {
+  const fetchExhibitorsForExhibition = async (_exhibitionId: string) => {
     try {
       setLoadingExhibitors(true);
       // Filter exhibitors who are approved and potentially registered for this exhibition

@@ -12,7 +12,6 @@ import {
   Typography,
   Button,
   Table,
-  Space,
   Popconfirm,
   message
 } from 'antd'
@@ -23,7 +22,7 @@ import dayjs from 'dayjs'
 
 const { RangePicker } = DatePicker
 const { TextArea } = Input
-const { Title, Text } = Typography
+const { Text } = Typography
 const { Option } = Select
 
 interface BasicInformationTabProps {

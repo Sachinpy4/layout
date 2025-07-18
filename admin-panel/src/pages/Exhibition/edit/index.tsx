@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { Card, Typography, Breadcrumb, message, Spin, App } from 'antd'
+import { Card, Typography, Breadcrumb, Spin, App } from 'antd'
 import { HomeOutlined, CalendarOutlined } from '@ant-design/icons'
 import { useNavigate, useParams } from 'react-router-dom'
 import ExhibitionForm from '../create/components/ExhibitionForm'

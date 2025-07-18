@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { Header } from '@/components/layout/Header';
@@ -23,12 +23,41 @@ import {
   isExpired
 } from '@/lib/utils';
 
+// Loading fallback component
+function ExhibitionsLoadingFallback() {
+  return (
+    <div className="space-y-6">
+      <div>
+        <div className="h-8 w-48 bg-gray-200 rounded animate-pulse mb-2"></div>
+        <div className="h-4 w-96 bg-gray-200 rounded animate-pulse"></div>
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {Array.from({ length: 6 }).map((_, i) => (
+          <Card key={i}>
+            <CardHeader>
+              <div className="h-4 w-3/4 bg-gray-200 rounded animate-pulse"></div>
+              <div className="h-3 w-1/2 bg-gray-200 rounded animate-pulse"></div>
+            </CardHeader>
+            <CardContent>
+              <div className="h-32 w-full bg-gray-200 rounded animate-pulse mb-4"></div>
+              <div className="h-3 w-full bg-gray-200 rounded animate-pulse mb-2"></div>
+              <div className="h-3 w-2/3 bg-gray-200 rounded animate-pulse"></div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export default function ExhibitionsPage() {
   return (
     <div className="min-h-screen bg-gray-50">
       <Header />
       <main className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
-        <ExhibitionsList />
+        <Suspense fallback={<ExhibitionsLoadingFallback />}>
+          <ExhibitionsList />
+        </Suspense>
       </main>
     </div>
   );

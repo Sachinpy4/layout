@@ -1,13 +1,10 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { Stage, Layer } from 'react-konva';
 import { LayoutData, ViewMode } from '../types/layout-types';
-import { useLayoutInteractions } from '../hooks/useLayoutInteractions';
 import { 
   useViewportCulling, 
   useVisibleStalls, 
-  usePerformanceMetrics,
   useFitToCanvas,
-  supportsOffscreenCanvas,
   highPerformanceController
 } from './LayoutCanvasUtils';
 import { 
@@ -79,7 +76,6 @@ const LayoutCanvas: React.FC<LayoutCanvasProps> = ({
   onEditHall,
   onHallSelect,
   onHallSelectForDelete,
-  onPositionUpdate,
   onDragComplete,
   isModalOpen = false
 }) => {
@@ -109,7 +105,6 @@ const LayoutCanvas: React.FC<LayoutCanvasProps> = ({
   const isSpaceInteractionAllowed = viewMode === 'space';
   const isHallInteractionAllowed = viewMode === 'hall';
   const isStallInteractionAllowed = viewMode === 'stall';
-  const isFixtureInteractionAllowed = viewMode === 'fixture';
 
   // Use custom hooks
   const isMobile = useMobileDetection();
@@ -132,7 +127,6 @@ const LayoutCanvas: React.FC<LayoutCanvasProps> = ({
     scale,
     { x: -position.x, y: -position.y, width: containerSize.width, height: containerSize.height }
   );
-  const performanceMetrics = usePerformanceMetrics(layout, visibleStalls);
   const fitToCanvas = useFitToCanvas(
     layout, 
     containerSize, 

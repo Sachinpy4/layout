@@ -9,7 +9,6 @@
  */
 
 import { LODLevel, LODRenderData } from './LevelOfDetail';
-import { stallShapePool } from './ObjectPool';
 
 export interface BatchGroup {
   id: string;
@@ -51,12 +50,9 @@ export interface BatchRenderResult {
 export class BatchRenderer {
   private static instance: BatchRenderer;
   private batches = new Map<string, BatchGroup>();
-  private commandQueue: BatchRenderCommand[] = [];
   private renderCache = new Map<string, ImageData>();
   private offscreenCanvas: OffscreenCanvas | null = null;
-  private offscreenContext: OffscreenCanvasRenderingContext2D | null = null;
   private batchingEnabled = true;
-  private maxBatchSize = 100;
   private renderStats: BatchRenderResult = {
     totalBatches: 0,
     totalStalls: 0,
@@ -79,7 +75,6 @@ export class BatchRenderer {
   private initializeOffscreenCanvas(): void {
     if (typeof OffscreenCanvas !== 'undefined') {
       this.offscreenCanvas = new OffscreenCanvas(2048, 2048);
-      this.offscreenContext = this.offscreenCanvas.getContext('2d');
     }
   }
 
@@ -212,7 +207,7 @@ export class BatchRenderer {
   private renderBatch(
     context: CanvasRenderingContext2D,
     batch: BatchGroup,
-    viewport: { x: number; y: number; width: number; height: number },
+    _viewport: { x: number; y: number; width: number; height: number },
     scale: number
   ): number {
     let drawCalls = 0;
@@ -247,7 +242,7 @@ export class BatchRenderer {
   private renderBasicBatch(
     context: CanvasRenderingContext2D,
     batch: BatchGroup,
-    scale: number
+    _scale: number
   ): number {
     if (batch.stalls.length === 0) return 0;
 
@@ -381,7 +376,7 @@ export class BatchRenderer {
   private shouldSkipBatch(
     batch: BatchGroup,
     viewport: { x: number; y: number; width: number; height: number },
-    scale: number
+    _scale: number
   ): boolean {
     // Skip if no stalls
     if (batch.stalls.length === 0) return true;
@@ -429,9 +424,9 @@ export class BatchRenderer {
 
   // Fallback rendering without batching
   private renderWithoutBatching(
-    context: CanvasRenderingContext2D,
-    viewport: { x: number; y: number; width: number; height: number },
-    scale: number
+    _context: CanvasRenderingContext2D,
+    _viewport: { x: number; y: number; width: number; height: number },
+    _scale: number
   ): BatchRenderResult {
     return {
       totalBatches: 0,
@@ -471,10 +466,6 @@ export class BatchRenderer {
     this.batchingEnabled = enabled;
   }
 
-  setMaxBatchSize(size: number): void {
-    this.maxBatchSize = size;
-  }
-
   clearBatches(): void {
     this.batches.clear();
     this.renderCache.clear();
@@ -487,7 +478,6 @@ export class BatchRenderer {
   // Memory management
   cleanup(): void {
     this.clearBatches();
-    this.commandQueue = [];
     
     if (this.offscreenCanvas) {
       this.offscreenCanvas.width = 0;

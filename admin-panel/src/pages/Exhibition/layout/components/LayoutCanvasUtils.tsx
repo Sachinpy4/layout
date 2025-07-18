@@ -1,7 +1,7 @@
 import { useCallback, useMemo } from 'react';
 import { LayoutData, Hall, Stall } from '../types/layout-types';
 import { spatialIndex } from '../utils/SpatialIndex';
-import { lodManager, LODLevel, lodPerformanceMonitor } from '../utils/LevelOfDetail';
+import { lodManager, lodPerformanceMonitor } from '../utils/LevelOfDetail';
 import { batchRenderer, batchPerformanceMonitor } from '../utils/BatchRenderer';
 import { poolManager } from '../utils/ObjectPool';
 
@@ -284,12 +284,6 @@ export class HighPerformanceController {
   private isInitialized = false;
   private optimizationLevel: 'low' | 'medium' | 'high' | 'ultra' = 'medium';
   private stallCount = 0;
-  private performanceMetrics = {
-    averageFPS: 0,
-    renderTime: 0,
-    memoryUsage: 0,
-    optimizationActive: false
-  };
 
   static getInstance(): HighPerformanceController {
     if (!HighPerformanceController.instance) {

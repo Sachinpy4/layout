@@ -3,7 +3,6 @@ import {
   Card, 
   Typography, 
   Breadcrumb, 
-  message, 
   Spin,
   App, 
   Descriptions, 
@@ -12,8 +11,7 @@ import {
   Space, 
   Row, 
   Col, 
-  Table, 
-  Divider,
+  Table,
   Avatar,
   Statistic
 } from 'antd'
@@ -34,7 +32,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import type { Exhibition } from '@/types'
 import dayjs from 'dayjs'
 
-const { Title, Text } = Typography
+const { Title } = Typography
 
 const ViewExhibitionPage: React.FC = () => {
   const navigate = useNavigate()

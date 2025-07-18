@@ -34,59 +34,9 @@ export const HighPerformanceDragWrapper: React.FC<HighPerformanceDragWrapperProp
   disabled = false
 }) => {
   const dragUpdateThrottleRef = useRef<number | null>(null);
-  const lastDragUpdateRef = useRef<number>(0);
   const isDraggingRef = useRef<boolean>(false);
   const initialPositionRef = useRef<{ x: number; y: number } | null>(null);
   const currentPositionRef = useRef<{ x: number; y: number } | null>(null);
-  
-  const DRAG_UPDATE_THROTTLE = 16; // ~60fps
-  const POSITION_UPDATE_THROTTLE = 8; // ~120fps for position updates
-
-  // Throttled position update
-  const throttledPositionUpdate = useCallback((x: number, y: number) => {
-    const now = Date.now();
-    
-    // Skip if we're updating too frequently
-    if (now - lastDragUpdateRef.current < DRAG_UPDATE_THROTTLE) {
-      return;
-    }
-    
-    lastDragUpdateRef.current = now;
-    
-    // Update spatial index immediately for better performance
-    if (targetType === 'stall' && layout?.space) {
-      // Find the hall containing this stall
-      for (const hall of layout.space.halls) {
-        const stall = hall.stalls.find((s: any) => s.id === targetId);
-        if (stall) {
-          spatialIndex.update(
-            targetId,
-            hall.x + x,
-            hall.y + y,
-            stall.width,
-            stall.height,
-            stall
-          );
-          break;
-        }
-      }
-    } else if (targetType === 'hall' && layout?.space) {
-      const hall = layout.space.halls.find((h: any) => h.id === targetId);
-      if (hall) {
-        spatialIndex.update(
-          targetId,
-          x,
-          y,
-          hall.width,
-          hall.height,
-          hall
-        );
-      }
-    }
-    
-    // Call the original position update
-    onPositionUpdate(targetId, targetType, x, y);
-  }, [targetId, targetType, layout, onPositionUpdate]);
 
   // Enhanced mouse down handler
   const handleMouseDown = useCallback((e: any) => {
@@ -130,21 +80,7 @@ export const HighPerformanceDragWrapper: React.FC<HighPerformanceDragWrapperProp
     onMouseDown(e, targetId, targetType);
   }, [disabled, targetId, targetType, layout, onMouseDown]);
 
-  // Enhanced mouse move handler (this would be called from parent)
-  const handleMouseMove = useCallback((newX: number, newY: number) => {
-    if (!isDraggingRef.current || disabled) return;
-    
-    currentPositionRef.current = { x: newX, y: newY };
-    
-    // Use requestAnimationFrame for smooth visual updates
-    if (dragUpdateThrottleRef.current) {
-      cancelAnimationFrame(dragUpdateThrottleRef.current);
-    }
-    
-    dragUpdateThrottleRef.current = requestAnimationFrame(() => {
-      throttledPositionUpdate(newX, newY);
-    });
-  }, [disabled, throttledPositionUpdate]);
+
 
   // Enhanced mouse up handler
   const handleMouseUp = useCallback(async () => {

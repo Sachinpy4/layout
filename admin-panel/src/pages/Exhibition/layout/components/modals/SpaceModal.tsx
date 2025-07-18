@@ -40,14 +40,7 @@ const SpaceModal: React.FC<SpaceModalProps> = ({
     }
   }, [visible, mode, existingSpace, form]);
 
-  const handleSubmit = async () => {
-    try {
-      const values = await form.validateFields();
-      onSubmit(values);
-    } catch (error) {
-      console.error('Form validation failed:', error);
-    }
-  };
+
 
   const getModalTitle = () => {
     switch (mode) {

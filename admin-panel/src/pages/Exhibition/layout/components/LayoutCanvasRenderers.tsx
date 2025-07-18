@@ -1,7 +1,6 @@
 import React from 'react';
 import { Group, Rect, Line, Text } from 'react-konva';
 import { LayoutData, Hall, Fixture, ViewMode } from '../types/layout-types';
-import MemoizedStall from './StallComponent';
 import { useHallDrag, useStallDrag, useFixtureDrag } from './LayoutCanvasHooks';
 
 interface RenderProps {
@@ -35,7 +34,7 @@ interface RenderProps {
 
 // Grid rendering is now handled by OptimizedDragSystem for better performance
 // This function is kept for backward compatibility but returns null
-export const renderGrid = (layout: LayoutData, scale: number) => {
+export const renderGrid = (_layout: LayoutData, _scale: number) => {
   return null; // Grid rendering moved to OptimizedDragSystem
 };
 
@@ -373,7 +372,6 @@ export const renderStalls = (props: RenderProps) => {
 
   return visibleStalls.map((stall) => {
     const isSelected = selectedStallId === stall.id;
-    const isDragged = draggedStallId === stall.id;
     
     // Status-based colors with type color integration
     let fillColor = stall.color || '#52c41a';

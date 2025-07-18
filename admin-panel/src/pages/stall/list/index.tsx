@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Card, Table, Button, Space, Input, Typography, Row, Col, Tag, Select } from 'antd';
-import { PlusOutlined, SearchOutlined } from '@ant-design/icons';
+import { PlusOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
-import exhibitionService from '../../../services/exhibition.service';
 import '../../Dashboard/Dashboard.css';
 
 const { Title, Text } = Typography;
@@ -96,7 +95,7 @@ const StallListPage: React.FC = () => {
     {
       title: 'Actions',
       key: 'actions',
-      render: (_: any, record: Stall) => (
+      render: (_: any, _record: Stall) => (
         <Space>
           <Button type="link" size="small">View</Button>
           <Button type="link" size="small">Edit</Button>

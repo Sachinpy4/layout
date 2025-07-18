@@ -14,15 +14,6 @@ const FixtureModal: React.FC<FixtureModalProps> = ({
 }) => {
   const [form] = Form.useForm();
 
-  const handleSubmit = async () => {
-    try {
-      const values = await form.validateFields();
-      onSubmit(values);
-    } catch (error) {
-      console.error('Form validation failed:', error);
-    }
-  };
-
   return (
     <Modal
       title="Add Fixture"

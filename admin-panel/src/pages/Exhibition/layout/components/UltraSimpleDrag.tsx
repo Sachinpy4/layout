@@ -10,14 +10,8 @@
  * 6. Only commits to layout state on drag end
  */
 
-import React, { useRef, useCallback } from 'react';
+import { useRef, useCallback } from 'react';
 import { LayoutData } from '../types/layout-types';
-
-interface UltraSimpleDragProps {
-  layout: LayoutData;
-  onDragComplete: (targetId: string, targetType: 'space' | 'hall' | 'stall' | 'fixture', finalX: number, finalY: number) => Promise<void>;
-  isModalOpen?: boolean;
-}
 
 // Hook for ultra-simple drag
 export const useUltraSimpleDrag = (

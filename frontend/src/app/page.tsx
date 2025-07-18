@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -8,7 +8,8 @@ import { Header } from "@/components/layout/Header"
 import { AuthManager } from "@/components/auth/AuthManager"
 import { CalendarIcon, MapPinIcon, UsersIcon } from "lucide-react"
 
-export default function HomePage() {
+// Component that uses useSearchParams
+function HomePageContent() {
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [authModalMode, setAuthModalMode] = useState<'login' | 'register'>('register');
   const searchParams = useSearchParams();
@@ -157,4 +158,33 @@ export default function HomePage() {
       />
     </>
   )
+}
+
+// Loading fallback component
+function LoadingFallback() {
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+      <Header />
+      <div className="container mx-auto px-4 py-16">
+        <div className="text-center max-w-4xl mx-auto">
+          <div className="h-12 w-3/4 bg-gray-200 rounded animate-pulse mb-6 mx-auto"></div>
+          <div className="h-6 w-full bg-gray-200 rounded animate-pulse mb-4"></div>
+          <div className="h-6 w-2/3 bg-gray-200 rounded animate-pulse mb-8 mx-auto"></div>
+          <div className="flex gap-4 justify-center">
+            <div className="h-12 w-32 bg-gray-200 rounded animate-pulse"></div>
+            <div className="h-12 w-32 bg-gray-200 rounded animate-pulse"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Main export with Suspense boundary
+export default function HomePage() {
+  return (
+    <Suspense fallback={<LoadingFallback />}>
+      <HomePageContent />
+    </Suspense>
+  );
 } 

@@ -2,11 +2,11 @@ import React, { useEffect, useState } from 'react';
 import { 
   Card, Button, Space, Modal, Select, Input, message, 
   Form, Switch, Typography, Radio, Alert, Row, Col,
-  Statistic, Tag, Badge, Divider
+  Statistic, Tag
 } from 'antd';
 import { 
   UserOutlined, CheckCircleOutlined, CloseCircleOutlined,
-  ExclamationCircleOutlined, ClockCircleOutlined, UserAddOutlined,
+  ClockCircleOutlined, UserAddOutlined,
   DownloadOutlined, MailOutlined, PhoneOutlined, EditOutlined
 } from '@ant-design/icons';
 import { useExhibitors } from '../../hooks/useExhibitors';
@@ -15,19 +15,17 @@ import { ExhibitorProfile, CreateExhibitorDto, UpdateExhibitorDto } from '../../
 import ExhibitorTable from './ExhibitorTable';
 import '../dashboard/Dashboard.css';
 
-const { Title, Text, Paragraph } = Typography;
+const { Title, Text } = Typography;
 const { Option } = Select;
 const { TextArea, Search } = Input;
 
 const ExhibitorsPage: React.FC = () => {
-  const { user } = useAuth();
+  const { user: _user } = useAuth();
   const {
     state: {
       exhibitors,
       stats,
       loading,
-      error,
-      filters,
       pagination,
     },
     actions: {
@@ -44,8 +42,6 @@ const ExhibitorsPage: React.FC = () => {
   } = useExhibitors();
 
   const [selectedExhibitor, setSelectedExhibitor] = useState<ExhibitorProfile | null>(null);
-  const [isModalVisible, setIsModalVisible] = useState(false);
-  const [modalType, setModalType] = useState<'create' | 'edit' | 'view'>('create');
   const [isUpdateModalVisible, setIsUpdateModalVisible] = useState(false);
   const [isEditModalVisible, setIsEditModalVisible] = useState(false);
   const [isViewModalVisible, setIsViewModalVisible] = useState(false);

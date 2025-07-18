@@ -181,8 +181,6 @@ export class ObjectPool<T> {
   }
 }
 
-// Specialized pools for different object types
-import { Group, Rect, Text } from 'react-konva';
 
 // Stall shape pool
 export const stallShapePool = new ObjectPool(

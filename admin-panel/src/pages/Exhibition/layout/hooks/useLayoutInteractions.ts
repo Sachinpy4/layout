@@ -72,8 +72,6 @@ export const useLayoutInteractions = (
     const spaceHeight = space.height * autoZoom;
 
     // Center the space in the canvas (MUST MATCH LayoutCanvas.tsx)
-    const offsetX = (containerWidth - spaceWidth) / 2;
-    const offsetY = (containerHeight - spaceHeight) / 2;
     const effectiveZoom = autoZoom * layout.zoom;
 
     // Calculate actual display coordinates with user zoom (MUST MATCH LayoutCanvas.tsx)

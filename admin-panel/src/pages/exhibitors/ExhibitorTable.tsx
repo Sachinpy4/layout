@@ -1,6 +1,6 @@
 import React from 'react';
 import { 
-  Table, Button, Tag, Space, Modal, Input, Tooltip, Dropdown, Menu, App
+  Table, Button, Tag, Space, Input, Tooltip, Dropdown, Menu, App
 } from 'antd';
 import { TableColumnsType } from 'antd';
 import { 
@@ -41,7 +41,6 @@ const ExhibitorTable: React.FC<ExhibitorTableProps> = ({
   currentPage,
   pageSize,
   total,
-  totalPages,
   selectedRowKeys,
   onSelectionChange,
   onView,
@@ -373,7 +372,7 @@ const ExhibitorTable: React.FC<ExhibitorTableProps> = ({
         pageSizeOptions: ['10', '20', '50', '100'],
       }}
       scroll={{ x: 1500 }}
-      onChange={(pagination, filters, sorter: any) => {
+      onChange={(_pagination, _filters, sorter: any) => {
         if (sorter.field) {
           onSortChange(sorter.field, sorter.order);
         }

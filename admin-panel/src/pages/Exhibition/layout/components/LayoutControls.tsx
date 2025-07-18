@@ -1,5 +1,4 @@
 import React from 'react';
-import { Space } from 'antd';
 import { LayoutData } from '../types/layout-types';
 
 interface LayoutControlsProps {
@@ -8,7 +7,7 @@ interface LayoutControlsProps {
 }
 
 export const LayoutControls: React.FC<LayoutControlsProps> = ({
-  layout,
+  layout: _layout,
   className = ''
 }) => {
   return (

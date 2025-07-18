@@ -3,7 +3,7 @@ import { useParams } from 'react-router-dom';
 import { App } from 'antd';
 import { LayoutService } from '../../../../services/layout.service';
 import { LayoutData } from '../types/layout-types';
-import { transformFrontendToBackend, testTransformation } from '../utils/data-transformers';
+import { transformFrontendToBackend } from '../utils/data-transformers';
 
 const layoutService = new LayoutService();
 

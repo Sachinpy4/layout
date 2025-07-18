@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Modal, Form, Input, InputNumber, Select, Space, Button, Card, Typography, Divider, ColorPicker, Row, Col, Badge, Tag, App } from 'antd';
-import { ShopOutlined, InfoCircleOutlined, DeleteOutlined } from '@ant-design/icons';
+import { Modal, Form, Input, InputNumber, Select, Space, Button, Card, Typography, Divider, Row, Col, Badge, App } from 'antd';
+import { ShopOutlined, DeleteOutlined } from '@ant-design/icons';
 import { LayoutData, Hall } from '../../types/layout-types';
 import { exhibitionService } from '@/services/exhibition.service';
 import stallService from '@/services/stall.service';
@@ -47,7 +47,7 @@ const StallModal: React.FC<StallModalProps> = ({
   exhibitionId,
   editingStall,
   stallModalMode = 'create',
-  onEditStall,
+  onEditStall: _onEditStall,
   selectedHallId: propSelectedHallId,
   onDelete
 }) => {
@@ -60,7 +60,6 @@ const StallModal: React.FC<StallModalProps> = ({
   const [selectedStallType, setSelectedStallType] = useState<any>(null);
 
   // Add state for real-time stall number validation feedback
-  const [currentStallNumber, setCurrentStallNumber] = useState<string>('');
   const [stallNumberStatus, setStallNumberStatus] = useState<'success' | 'warning' | 'error' | ''>('');
 
   // Fetch exhibition stall types when modal opens
@@ -71,7 +70,6 @@ const StallModal: React.FC<StallModalProps> = ({
     
     // Clear status indicators when modal opens
     if (visible) {
-      setCurrentStallNumber('');
       setStallNumberStatus('');
     }
   }, [visible, exhibitionId]);
@@ -123,7 +121,6 @@ const StallModal: React.FC<StallModalProps> = ({
       setSelectedHallId(propSelectedHallId || null);
       setSelectedStallType(null);
       // Clear stall number status indicators
-      setCurrentStallNumber('');
       setStallNumberStatus('');
     }
   }, [visible, stallModalMode, editingStall, form, layout, propSelectedHallId, exhibitionStallTypes]);
@@ -304,7 +301,6 @@ const StallModal: React.FC<StallModalProps> = ({
         form.resetFields();
         setSelectedStallType(null);
         // Clear stall number status indicators
-        setCurrentStallNumber('');
         setStallNumberStatus('');
         // Don't reset selectedHallId in create mode as it's managed by parent
       }
@@ -459,7 +455,6 @@ const StallModal: React.FC<StallModalProps> = ({
                 onChange={(e) => {
                   // Trigger real-time validation check
                   const value = e.target.value;
-                  setCurrentStallNumber(value);
                   
                   if (value && value.length > 0) {
                     if (checkStallNumberExists(value)) {

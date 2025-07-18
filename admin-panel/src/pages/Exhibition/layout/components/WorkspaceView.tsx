@@ -1,13 +1,11 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Card, Row, Col, Space, Typography, Button, Tag } from 'antd';
 import { 
   ArrowLeftOutlined, 
   PlusOutlined, 
   UndoOutlined, 
   RedoOutlined, 
-  SaveOutlined,
-  ZoomInOutlined,
-  ZoomOutOutlined
+  SaveOutlined
 } from '@ant-design/icons';
 import { LayoutData, ViewMode } from '../types/layout-types';
 import { Exhibition } from '../../../../types/index';
@@ -44,7 +42,6 @@ interface WorkspaceViewProps {
 }
 
 const WorkspaceView: React.FC<WorkspaceViewProps> = ({
-  exhibition,
   layout,
   viewMode,
   saving,

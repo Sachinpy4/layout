@@ -53,7 +53,6 @@ export class LevelOfDetailManager {
     full: 1.5         // 150% scale and above
   };
 
-  private lastFrameTime = 0;
   private frameTime = 0;
   private targetFPS = 60;
   private adaptiveThresholds = false;
@@ -200,7 +199,6 @@ export class LevelOfDetailManager {
   // Update performance metrics
   updatePerformanceMetrics(frameTime: number): void {
     this.frameTime = frameTime;
-    this.lastFrameTime = performance.now();
 
     // Enable performance mode if FPS drops below threshold
     const fps = 1000 / frameTime;
@@ -266,7 +264,7 @@ export class LevelOfDetailManager {
   }
 
   // Calculate visibility culling bounds
-  calculateVisibilityBounds(viewport: { x: number, y: number, width: number, height: number }, scale: number) {
+  calculateVisibilityBounds(viewport: { x: number, y: number, width: number, height: number }, _scale: number) {
     const padding = Math.max(viewport.width, viewport.height) * 0.2; // 20% padding
     
     return {

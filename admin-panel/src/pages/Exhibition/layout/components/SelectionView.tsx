@@ -23,10 +23,10 @@ interface SelectionViewProps {
 const SelectionView: React.FC<SelectionViewProps> = ({
   layout,
   onViewModeChange,
-  onShowSpaceModal,
-  onShowHallModal,
-  onShowStallModal,
-  onShowFixtureModal
+  onShowSpaceModal: _onShowSpaceModal,
+  onShowHallModal: _onShowHallModal,
+  onShowStallModal: _onShowStallModal,
+  onShowFixtureModal: _onShowFixtureModal
 }) => {
   const handleSpaceClick = () => {
     // Always go to workspace view, create space from inside

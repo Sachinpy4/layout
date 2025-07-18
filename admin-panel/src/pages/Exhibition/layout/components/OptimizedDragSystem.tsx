@@ -34,10 +34,10 @@ interface OptimizedDragSystemProps {
 export const OptimizedDragSystem: React.FC<OptimizedDragSystemProps> = ({
   layout,
   children,
-  onDragComplete,
+  onDragComplete: _onDragComplete,
   isModalOpen = false
 }) => {
-  const [dragState, setDragState] = useState<DragPreviewState>({
+  const [dragState, _setDragState] = useState<DragPreviewState>({
     isDragging: false,
     dragTargetId: null,
     dragTargetType: null,
@@ -49,138 +49,8 @@ export const OptimizedDragSystem: React.FC<OptimizedDragSystemProps> = ({
   });
 
   const dragUpdateRef = useRef<number | null>(null);
-  const stageRef = useRef<any>(null);
 
-  // High-performance drag start handler
-  const handleDragStart = useCallback((
-    targetId: string,
-    targetType: 'space' | 'hall' | 'stall' | 'fixture',
-    element: any,
-    initialX: number,
-    initialY: number
-  ) => {
-    // Store original element data for preview
-    const draggedElement = {
-      id: targetId,
-      type: targetType,
-      x: initialX,
-      y: initialY,
-      width: element.width || 0,
-      height: element.height || 0,
-      color: element.color || '#e6f3ff',
-      name: element.name || ''
-    };
 
-    setDragState({
-      isDragging: true,
-      dragTargetId: targetId,
-      dragTargetType: targetType,
-      dragPreviewX: initialX,
-      dragPreviewY: initialY,
-      originalX: initialX,
-      originalY: initialY,
-      draggedElement
-    });
-
-    // Disable pointer events on other elements during drag for better performance
-    document.body.style.pointerEvents = 'none';
-    
-    // Re-enable pointer events on the canvas
-    const canvas = document.querySelector('canvas');
-    if (canvas) {
-      canvas.style.pointerEvents = 'auto';
-    }
-  }, []);
-
-  // High-performance drag move handler with requestAnimationFrame
-  const handleDragMove = useCallback((newX: number, newY: number) => {
-    if (!dragState.isDragging) return;
-
-    // Cancel previous animation frame
-    if (dragUpdateRef.current) {
-      cancelAnimationFrame(dragUpdateRef.current);
-    }
-
-    // Use requestAnimationFrame for smooth 60fps updates
-    dragUpdateRef.current = requestAnimationFrame(() => {
-      // Apply grid snapping if enabled (1 meter grid)
-      let snappedX = newX;
-      let snappedY = newY;
-      
-      if (layout.showGrid && layout.pixelsPerSqm > 0) {
-        const meterInPixels = layout.pixelsPerSqm;
-        snappedX = Math.round(newX / meterInPixels) * meterInPixels;
-        snappedY = Math.round(newY / meterInPixels) * meterInPixels;
-      }
-
-      // Apply bounds checking
-      if (dragState.dragTargetType === 'stall' && layout.space) {
-        // Find parent hall for stall bounds
-        for (const hall of layout.space.halls) {
-          const stall = hall.stalls.find(s => s.id === dragState.dragTargetId);
-          if (stall) {
-            const maxX = hall.width - stall.width;
-            const maxY = hall.height - stall.height;
-            snappedX = Math.max(0, Math.min(maxX, snappedX));
-            snappedY = Math.max(0, Math.min(maxY, snappedY));
-            break;
-          }
-        }
-      } else if (dragState.dragTargetType === 'hall' && layout.space) {
-        const hall = layout.space.halls.find(h => h.id === dragState.dragTargetId);
-        if (hall) {
-          const maxX = layout.space.width - hall.width;
-          const maxY = layout.space.height - hall.height;
-          snappedX = Math.max(0, Math.min(maxX, snappedX));
-          snappedY = Math.max(0, Math.min(maxY, snappedY));
-        }
-      }
-
-      // Update drag preview position (no layout state update)
-      setDragState(prev => ({
-        ...prev,
-        dragPreviewX: snappedX,
-        dragPreviewY: snappedY
-      }));
-    });
-  }, [dragState.isDragging, dragState.dragTargetType, dragState.dragTargetId, layout]);
-
-  // High-performance drag end handler
-  const handleDragEnd = useCallback(async () => {
-    if (!dragState.isDragging || !dragState.dragTargetId || !dragState.dragTargetType) return;
-
-    // Cancel any pending animation frame
-    if (dragUpdateRef.current) {
-      cancelAnimationFrame(dragUpdateRef.current);
-    }
-
-    // Restore pointer events
-    document.body.style.pointerEvents = '';
-
-    // Only now update the actual layout data
-    try {
-      await onDragComplete(
-        dragState.dragTargetId,
-        dragState.dragTargetType,
-        dragState.dragPreviewX,
-        dragState.dragPreviewY
-      );
-    } catch (error) {
-      console.error('Drag complete error:', error);
-    }
-
-    // Reset drag state
-    setDragState({
-      isDragging: false,
-      dragTargetId: null,
-      dragTargetType: null,
-      dragPreviewX: 0,
-      dragPreviewY: 0,
-      originalX: 0,
-      originalY: 0,
-      draggedElement: null
-    });
-  }, [dragState, onDragComplete]);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -288,8 +158,8 @@ export const OptimizedDragSystem: React.FC<OptimizedDragSystemProps> = ({
 
 // Hook for using the optimized drag system
 export const useOptimizedDrag = (
-  layout: LayoutData,
-  onDragComplete: (targetId: string, targetType: 'space' | 'hall' | 'stall' | 'fixture', finalX: number, finalY: number) => Promise<void>
+  _layout: LayoutData,
+  _onDragComplete: (targetId: string, targetType: 'space' | 'hall' | 'stall' | 'fixture', finalX: number, finalY: number) => Promise<void>
 ) => {
   const dragSystemRef = useRef<any>(null);
 

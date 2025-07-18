@@ -35,13 +35,11 @@ interface ViewportBounds {
 export class SpatialIndex {
   private root: SpatialNode | null = null;
   private maxEntries = 16; // Optimal for most use cases
-  private minEntries = 4;
   private nodeCache = new Map<string, SpatialNode>();
   private bboxCache = new Map<string, BoundingBox>();
 
   constructor(maxEntries = 16) {
     this.maxEntries = maxEntries;
-    this.minEntries = Math.max(2, Math.ceil(maxEntries * 0.4));
   }
 
   // Insert a new spatial object
