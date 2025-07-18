@@ -13,7 +13,7 @@ import { useExhibitors } from '../../hooks/useExhibitors';
 import { useAuth } from '../../hooks/useAuth';
 import { ExhibitorProfile, CreateExhibitorDto, UpdateExhibitorDto } from '../../services/exhibitor.service';
 import ExhibitorTable from './ExhibitorTable';
-import '../dashboard/Dashboard.css';
+import '../Dashboard/Dashboard.css';
 
 const { Title, Text } = Typography;
 const { Option } = Select;
