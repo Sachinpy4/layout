@@ -2,10 +2,10 @@
 
 import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Header } from "@/components/layout/Header"
-import { AuthManager } from "@/components/auth/AuthManager"
+import { Button } from "../components/ui/button"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/ui/card"
+import { Header } from "../components/layout/Header"
+import { AuthManager } from "../components/auth/AuthManager"
 import { CalendarIcon, MapPinIcon, UsersIcon } from "lucide-react"
 
 // Component that uses useSearchParams

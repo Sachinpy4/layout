@@ -2,9 +2,9 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
-import { useAuth } from '@/contexts/auth.context';
-import { Button } from '@/components/ui/button';
-import { AuthManager } from '@/components/auth/AuthManager';
+import { useAuth } from '../../contexts/auth.context';
+import { Button } from '../ui/button';
+import { AuthManager } from '../auth/AuthManager';
 
 export const Header: React.FC = () => {
   const { user, isAuthenticated, logout } = useAuth();

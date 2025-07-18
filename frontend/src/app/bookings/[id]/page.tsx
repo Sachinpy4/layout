@@ -2,11 +2,11 @@
 
 import React, { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Separator } from '@/components/ui/separator';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../../components/ui/card';
+import { Button } from '../../../components/ui/button';
+import { Badge } from '../../../components/ui/badge';
+import { Alert, AlertDescription } from '../../../components/ui/alert';
+import { Separator } from '../../../components/ui/separator';
 import { 
   CheckCircle2, 
   Clock, 
@@ -20,10 +20,10 @@ import {
   Building2,
   CreditCard
 } from 'lucide-react';
-import { Booking } from '@/types/booking';
-import { bookingService } from '@/services/booking.service';
-import { formatCurrency, formatDate } from '@/utils/format';
-import { toast } from '@/hooks/use-toast';
+import { Booking } from '../../../types/booking';
+import { bookingService } from '../../../services/booking.service';
+import { formatCurrency, formatDate } from '../../../utils/format';
+import { toast } from '../../../hooks/use-toast';
 
 export default function BookingConfirmationPage() {
   const params = useParams();

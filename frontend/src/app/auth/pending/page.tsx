@@ -2,10 +2,10 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { useAuth } from '@/contexts/auth.context';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
+import { useAuth } from '../../../contexts/auth.context';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../../components/ui/card';
+import { Button } from '../../../components/ui/button';
+import { Badge } from '../../../components/ui/badge';
 import { Clock, CheckCircle, Mail, Phone, Building, User } from 'lucide-react';
 
 export default function PendingApprovalPage() {

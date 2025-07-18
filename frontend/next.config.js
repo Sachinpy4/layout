@@ -1,4 +1,6 @@
 /** @type {import('next').NextConfig} */
+const path = require('path');
+
 const nextConfig = {
   typescript: {
     ignoreBuildErrors: false,
@@ -28,11 +30,17 @@ const nextConfig = {
     API_BASE_URL: process.env.API_BASE_URL || 'http://localhost:3001/api/v1',
   },
   webpack: (config, { isServer }) => {
+    // Add path aliases for both client and server
+    const baseAliases = {
+      '@': path.resolve(__dirname, './src'),
+    };
+
     // Fix for Konva.js in Next.js SSR
     if (isServer) {
       // On server side, mock Konva to avoid Node.js canvas dependency
       config.resolve.alias = {
         ...config.resolve.alias,
+        ...baseAliases,
         'konva': false,
         'react-konva': false,
       };
@@ -40,6 +48,7 @@ const nextConfig = {
       // On client side, use browser version of Konva
       config.resolve.alias = {
         ...config.resolve.alias,
+        ...baseAliases,
         'konva/lib/index-node.js': 'konva/lib/index.js',
       };
     }
