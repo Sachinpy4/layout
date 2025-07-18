@@ -57,7 +57,7 @@ RUN addgroup -g 1001 -S nodejs && \
 # Set environment variables
 ENV NODE_ENV=production \
     NEXT_TELEMETRY_DISABLED=1 \
-    PORT=3000 \
+    PORT=80 \
     HOSTNAME=0.0.0.0
 
 # Copy built application from builder stage
@@ -66,14 +66,14 @@ COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 COPY --from=builder --chown=nextjs:nodejs /app/public ./public
 
 # Expose port (EasyPanel will handle routing)
-EXPOSE 3000
+EXPOSE 80
 
 # Switch to non-root user
 USER nextjs
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:3000/api/health || curl -f http://localhost:3000 || exit 1
+    CMD curl -f http://localhost:80/api/health || curl -f http://localhost:80 || exit 1
 
 # Use dumb-init for proper signal handling
 ENTRYPOINT ["dumb-init", "--"]
