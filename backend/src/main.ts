@@ -6,11 +6,16 @@ import { AppModule } from './app.module';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   
-  // Enable CORS
+  // Enable CORS with environment-based configuration
+  const corsOrigins = process.env.CORS_ORIGIN 
+    ? process.env.CORS_ORIGIN.split(',')
+    : ['http://localhost:3000', 'http://localhost:5173'];
+  
   app.enableCors({
-    origin: ['http://localhost:3000', 'http://localhost:5173'], // Frontend and admin panel
+    origin: corsOrigins,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
     allowedHeaders: ['Content-Type', 'Authorization'],
+    credentials: true,
   });
 
   // Global validation pipe with detailed error messages
@@ -59,7 +64,17 @@ async function bootstrap() {
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('api/docs', app, document);
 
-  await app.listen(3001);
-  console.log('Backend server running on http://localhost:3001');
+  const port = process.env.PORT || 3001;
+  const host = process.env.HOSTNAME || '0.0.0.0';
+  
+  await app.listen(port, host);
+  console.log(`Backend server running on http://${host}:${port}`);
+  console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
+  console.log(`CORS Origins: ${corsOrigins.join(', ')}`);
+  console.log(`MongoDB URI: ${process.env.MONGODB_URI || 'mongodb://localhost:27017/stall_booking_new'}`);
 }
-bootstrap(); 
+
+bootstrap().catch(error => {
+  console.error('Application failed to start:', error);
+  process.exit(1);
+}); 
