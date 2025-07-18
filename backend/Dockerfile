@@ -1,7 +1,7 @@
 # =============================================================================
 # STAGE 1: Build Stage
 # =============================================================================
-FROM node:22-alpine AS builder
+FROM node:22.15.0-alpine AS builder
 
 # Set working directory
 WORKDIR /app
@@ -30,11 +30,11 @@ RUN npm prune --production && \
 # =============================================================================
 # STAGE 2: Production Stage
 # =============================================================================
-FROM node:22-alpine AS production
+FROM node:22.15.0-alpine AS production
 
-# Install security updates
+# Install security updates and curl for health check
 RUN apk --no-cache upgrade && \
-    apk --no-cache add dumb-init && \
+    apk --no-cache add dumb-init curl && \
     rm -rf /var/cache/apk/*
 
 # Set working directory
@@ -63,8 +63,8 @@ EXPOSE 3001
 USER nestjs
 
 # Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD node dist/health-check.js || exit 1
+HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
+    CMD curl -f http://localhost:3001/api/v1/ || exit 1
 
 # Use dumb-init for proper signal handling
 ENTRYPOINT ["dumb-init", "--"]
