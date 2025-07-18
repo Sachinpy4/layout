@@ -29,6 +29,9 @@
       "@/components/*": [
         "./src/components/*"
       ],
+      "@/contexts/*": [
+        "./src/contexts/*"
+      ],
       "@/lib/*": [
         "./src/lib/*"
       ],
