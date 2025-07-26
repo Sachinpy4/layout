@@ -267,40 +267,6 @@ const StallDetailsStep: React.FC<StallDetailsStepProps> = ({
             </Card>
           )}
 
-          {/* Exhibition Info */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Building className="h-5 w-5" />
-                Exhibition Information
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <p className="text-sm text-muted-foreground">Exhibition Name</p>
-                  <p className="font-medium">{exhibition?.name || 'N/A'}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Venue</p>
-                  <p className="font-medium">{exhibition?.venue || 'N/A'}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Start Date</p>
-                  <p className="font-medium">
-                    {exhibition?.startDate ? new Date(exhibition.startDate).toLocaleDateString() : 'N/A'}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">End Date</p>
-                  <p className="font-medium">
-                    {exhibition?.endDate ? new Date(exhibition.endDate).toLocaleDateString() : 'N/A'}
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
           {/* Continue Button */}
           <div className="flex justify-center">
             <Button

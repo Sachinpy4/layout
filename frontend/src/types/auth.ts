@@ -5,6 +5,12 @@ export interface User {
   companyName: string;
   contactNumber: string;
   address: string;
+  city?: string;
+  state?: string;
+  pinCode?: string;
+  website?: string;
+  panNumber?: string;
+  gstNumber?: string;
   isApproved: boolean;
   role: 'exhibitor' | 'admin';
   createdAt: string;
@@ -45,4 +51,5 @@ export interface AuthContextType {
   login: (credentials: LoginCredentials) => Promise<void>;
   register: (data: RegisterData) => Promise<void>;
   logout: () => void;
+  setUser?: (user: User) => void;
 } 

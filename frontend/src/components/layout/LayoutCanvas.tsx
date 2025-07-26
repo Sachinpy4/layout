@@ -13,7 +13,7 @@ interface LayoutCanvasProps {
   selectedStalls: Set<string>;
   hoveredStall: string | null;
   onStallClick: (stall: Stall) => void;
-  onStallHover: (stallId: string | null) => void;
+  onStallHover: (stallId: string | null, mousePosition?: { x: number; y: number }) => void;
   onViewportChange: (viewport: Partial<CanvasViewport>) => void;
   className?: string;
 }
@@ -53,20 +53,34 @@ const MemoizedStall = React.memo(({
   const absoluteX = hall.position.x + stall.position.x;
   const absoluteY = hall.position.y + stall.position.y;
 
-  // Determine stall appearance
+  // Determine stall appearance with new 3-status system
   let fillColor = stallType.color;
   let borderColor = '#374151';
   let lineWidth = 1 / scale;
   
-  if (!isAvailable) {
-    fillColor = '#E5E7EB'; // Gray for unavailable
+  // Handle new status system: available, reserved, booked
+  if (stall.status === 'booked') {
+    fillColor = '#FCD34D'; // Yellow for booked
+    borderColor = '#F59E0B';
+  } else if (stall.status === 'reserved') {
+    fillColor = '#FB923C'; // Orange for reserved
+    borderColor = '#EA580C';
+  } else if (stall.status === 'available') {
+    fillColor = '#34D399'; // Green for available
+    borderColor = '#059669';
+  } else {
+    // Fallback for any other status
+    fillColor = '#E5E7EB'; // Gray for unknown status
     borderColor = '#9CA3AF';
-  } else if (isSelected) {
+  }
+  
+  // Override colors for selection states
+  if (isSelected) {
     fillColor = '#3B82F6'; // Blue for selected
     borderColor = '#1D4ED8';
     lineWidth = 3 / scale;
-  } else if (isHovered) {
-    fillColor = '#60A5FA'; // Light blue for hovered
+  } else if (isHovered && stall.status === 'available') {
+    fillColor = '#60A5FA'; // Light blue for hovered (only if available)
     borderColor = '#2563EB';
     lineWidth = 2 / scale;
   }
@@ -91,38 +105,21 @@ const MemoizedStall = React.memo(({
         perfectDrawEnabled={false}
       />
       
-      {/* Stall Number (Main) */}
+      {/* Stall Number (Admin Panel Logic) */}
       <Text
-        x={stall.size.width / 2}
-        y={stall.size.height / 2 - 8 / scale}
         text={stall.stallNumber}
-        fontSize={Math.max(10 / scale, 12 / scale)}
+        fontSize={Math.min(stall.size.width, stall.size.height) * 0.2} // 20% of smallest stall dimension
+        fill={isAvailable ? '#FFFFFF' : '#6B7280'}
         fontFamily="-apple-system, BlinkMacSystemFont, sans-serif"
         fontStyle="bold"
-        fill={isAvailable ? '#FFFFFF' : '#6B7280'}
-        align="center"
-        verticalAlign="middle"
-        offsetX={stall.stallNumber.length * 6 / scale}
-        offsetY={6 / scale}
+        x={stall.size.width / 2}
+        y={stall.size.height / 2}
+        offsetX={stall.stallNumber.length * Math.min(stall.size.width, stall.size.height) * 0.06} // Approximate half-width of text for centering
+        offsetY={Math.min(stall.size.width, stall.size.height) * 0.1} // Proportional vertical adjustment
         listening={false} // 🚀 Konva 2025: Disable events for text
       />
       
-      {/* Stall Type Name (if space allows) */}
-      {(stall.size.width > 80 && stall.size.height > 60) && stallType && (
-        <Text
-          x={stall.size.width / 2}
-          y={stall.size.height / 2 + 8 / scale}
-          text={stallType.name}
-          fontSize={Math.max(6 / scale, 8 / scale)}
-          fontFamily="-apple-system, BlinkMacSystemFont, sans-serif"
-          fill={isAvailable ? '#E5E7EB' : '#9CA3AF'}
-          align="center"
-          verticalAlign="middle"
-          offsetX={stallType.name.length * 3 / scale}
-          offsetY={4 / scale}
-          listening={false}
-        />
-      )}
+
       
       {/* Premium/Special Type Indicator (top left) */}
       {stallType && ['premium', 'corner', 'island', 'vip'].includes(stallType.name.toLowerCase()) && (
@@ -137,40 +134,9 @@ const MemoizedStall = React.memo(({
         />
       )}
       
-      {/* Stall Dimensions (bottom right, if space allows) */}
-      {(stall.size.width > 60 && stall.size.height > 40) && (
-        <Text
-          x={stall.size.width - 4 / scale}
-          y={stall.size.height - 4 / scale}
-          text={`${Math.round(stall.size.width / 50)}×${Math.round(stall.size.height / 50)}m`}
-          fontSize={Math.max(5 / scale, 7 / scale)}
-          fontFamily="-apple-system, BlinkMacSystemFont, sans-serif"
-          fill={isAvailable ? '#D1D5DB' : '#6B7280'}
-          align="right"
-          verticalAlign="bottom"
-          offsetX={`${Math.round(stall.size.width / 50)}×${Math.round(stall.size.height / 50)}m`.length * 2.5 / scale}
-          offsetY={3 / scale}
-          opacity={0.8}
-          listening={false}
-        />
-      )}
+
       
-      {/* Stall Price (top right, if selected or hovered and space allows) */}
-      {(isSelected || isHovered) && (stall.size.width > 80 && stall.size.height > 50) && stall.totalPrice > 0 && (
-        <Text
-          x={stall.size.width - 4 / scale}
-          y={4 / scale}
-          text={`₹${Math.round(stall.totalPrice).toLocaleString()}`}
-          fontSize={Math.max(6 / scale, 8 / scale)}
-          fontFamily="-apple-system, BlinkMacSystemFont, sans-serif"
-          fontStyle="bold"
-          fill={isSelected ? '#FEF3C7' : '#F3F4F6'}
-          align="right"
-          offsetX={`₹${Math.round(stall.totalPrice).toLocaleString()}`.length * 3 / scale}
-          offsetY={0}
-          listening={false}
-        />
-      )}
+
       
       {/* Selection Indicator (adjusted position if premium indicator exists) */}
       {isSelected && (
@@ -333,6 +299,7 @@ export const LayoutCanvas: React.FC<LayoutCanvasProps> = ({
   const [containerSize, setContainerSize] = useState({ width: 800, height: 600 });
   const [isDragging, setIsDragging] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+  const currentHoveredStallRef = useRef<string | null>(null);
   const [isClient, setIsClient] = useState(false);
 
   // Ensure component only renders on client side
@@ -347,7 +314,11 @@ export const LayoutCanvas: React.FC<LayoutCanvasProps> = ({
     };
     checkMobile();
     window.addEventListener('resize', checkMobile);
-    return () => window.removeEventListener('resize', checkMobile);
+    return () => {
+      window.removeEventListener('resize', checkMobile);
+      // Reset hover state on unmount
+      currentHoveredStallRef.current = null;
+    };
   }, []);
 
   // Update container size
@@ -411,7 +382,7 @@ export const LayoutCanvas: React.FC<LayoutCanvasProps> = ({
       const hall = layout.halls?.find(h => h._id === stall.hallId);
       const isSelected = selectedStalls.has(stall._id);
       const isHovered = hoveredStall === stall._id;
-      const isAvailable = stall.status === 'available' && !stall.isBooked;
+      const isAvailable = stall.status === 'available'; // Only truly available stalls can be selected
       
       return {
         stall,
@@ -517,10 +488,7 @@ export const LayoutCanvas: React.FC<LayoutCanvasProps> = ({
           cornerRadius={4 / scale}
         />
 
-        {/* Grid lines inside exhibition space */}
-        <Group>
-          {renderGrid()}
-        </Group>
+
 
 
       </Group>
@@ -606,13 +574,44 @@ export const LayoutCanvas: React.FC<LayoutCanvasProps> = ({
           const expectedX = (stallAbsoluteX * scale) + position.x;
           const expectedY = (stallAbsoluteY * scale) + position.y;
           
-          return Math.abs(groupPos.x - expectedX) < 5 && Math.abs(groupPos.y - expectedY) < 5;
+          return Math.abs(groupPos.x - expectedX) < 10 && Math.abs(groupPos.y - expectedY) < 10;
         });
         
-        onStallHover(hoveredStall?.stall._id || null);
+        const newHoveredStallId = hoveredStall?.stall._id || null;
+        
+        // Only update if the hovered stall has actually changed
+        if (currentHoveredStallRef.current !== newHoveredStallId) {
+          currentHoveredStallRef.current = newHoveredStallId;
+          
+          if (hoveredStall) {
+            // Calculate stall's center-top position on screen for tooltip
+            const containerRect = containerRef.current?.getBoundingClientRect();
+            if (containerRect) {
+              // Convert stall canvas position to screen coordinates
+              const stallCenterX = groupPos.x + (hoveredStall.stall.size.width * scale) / 2;
+              const stallTopY = groupPos.y;
+              
+              // Convert to absolute screen coordinates
+              const tooltipPosition = {
+                x: containerRect.left + stallCenterX,
+                y: containerRect.top + stallTopY
+              };
+              
+              onStallHover(hoveredStall.stall._id, tooltipPosition);
+            } else {
+              onStallHover(hoveredStall.stall._id, { x: 0, y: 0 });
+            }
+          } else {
+            onStallHover(null);
+          }
+        }
       }
     } else {
-      onStallHover(null);
+      // Mouse is not over any stall
+      if (currentHoveredStallRef.current !== null) {
+        currentHoveredStallRef.current = null;
+        onStallHover(null);
+      }
     }
   }, [isDragging, memoizedStallData, scale, position, onStallHover]);
 

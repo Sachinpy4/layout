@@ -154,14 +154,9 @@ export function BookingSummary({
     <>
       <Card className="sticky top-4">
         <CardHeader>
-          <CardTitle className="flex items-center justify-between">
-            <span className="flex items-center gap-2">
-              <Package className="h-5 w-5" />
-              Booking Summary
-            </span>
-            <Badge variant="secondary">
-              {selectedStalls.length} stall{selectedStalls.length > 1 ? 's' : ''}
-            </Badge>
+          <CardTitle className="flex items-center gap-2">
+            <Package className="h-5 w-5" />
+            Booking Summary
           </CardTitle>
         </CardHeader>
         
@@ -212,57 +207,6 @@ export function BookingSummary({
               })}
             </div>
           </div>
-
-          {/* Pricing Breakdown */}
-          {calculations && calculations.totalBaseAmount > 0 && (
-            <div className="space-y-2">
-              <h4 className="font-medium text-sm text-gray-700 flex items-center gap-2">
-                <Calculator className="h-4 w-4" />
-                Price Breakdown
-              </h4>
-              <div className="space-y-1 text-sm">
-                <div className="flex justify-between">
-                  <span>Total Base Amount:</span>
-                  <span>{formatPrice(calculations.totalBaseAmount)}</span>
-                </div>
-                
-                {/* Show discounts if any */}
-                {calculations.appliedDiscounts && calculations.appliedDiscounts.length > 0 && (
-                  calculations.appliedDiscounts.map((discount, index) => (
-                    <div key={index} className="flex justify-between text-green-600">
-                      <span>{discount.name} ({discount.type === 'percentage' ? `${discount.value}%` : `₹${discount.value}`}):</span>
-                      <span>-{formatPrice(discount.amount)}</span>
-                    </div>
-                  ))
-                )}
-                
-                {/* Show amount after discount if there are discounts */}
-                {calculations.totalDiscountAmount > 0 && (
-                  <div className="flex justify-between">
-                    <span>Amount after Discount:</span>
-                    <span>{formatPrice(calculations.totalAmountAfterDiscount)}</span>
-                  </div>
-                )}
-                
-                {/* Show taxes */}
-                {calculations.taxes && calculations.taxes.length > 0 && (
-                  calculations.taxes.map((tax, index) => (
-                    <div key={index} className="flex justify-between">
-                      <span>{tax.name} ({tax.rate}%):</span>
-                      <span>₹{formatPrice(tax.amount)}</span>
-                    </div>
-                  ))
-                )}
-                
-                <div className="border-t pt-1 mt-2">
-                  <div className="flex justify-between font-semibold">
-                    <span>Total Amount (incl. Taxes):</span>
-                    <span className="text-blue-600">{formatPrice(calculations.totalAmount)}</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
 
           {/* Action Buttons */}
           <div className="space-y-2 pt-4">

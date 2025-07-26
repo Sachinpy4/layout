@@ -22,8 +22,29 @@ export class RolesGuard implements CanActivate {
       return false;
     }
 
-    // Check if user has required role
-    const userRole = user.role || user.type;
-    return requiredRoles.some((role) => userRole === role);
+    // Check if user has required permissions
+    // The JWT should contain the role with permissions populated
+    const userPermissions = user.role?.permissions || user.permissions || [];
+    const userRoleName = user.role?.name || user.role;
+
+    // Check if user has any of the required roles/permissions
+    return requiredRoles.some((requiredRole) => {
+      // First check if it's a direct role name match (for backwards compatibility)
+      if (userRoleName === requiredRole) {
+        return true;
+      }
+      
+      // Then check if user has the permission in their role's permissions array
+      if (Array.isArray(userPermissions) && userPermissions.includes(requiredRole)) {
+        return true;
+      }
+      
+      // Check individual permissions array if it exists on user
+      if (Array.isArray(user.permissions) && user.permissions.includes(requiredRole)) {
+        return true;
+      }
+      
+      return false;
+    });
   }
 } 

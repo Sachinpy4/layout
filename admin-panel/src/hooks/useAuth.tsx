@@ -61,14 +61,31 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const logout = async (): Promise<void> => {
     try {
       setLoading(true);
+      console.log('useAuth: Starting logout...')
+      
+      // Call the auth service logout (handles backend API + localStorage clearing)
       await authService.logout();
+      
+      console.log('useAuth: Auth service logout completed')
+      
+      // Clear user state
       setUser(null);
+      
+      console.log('useAuth: User state cleared')
       message.success('Logged out successfully');
     } catch (error: any) {
-      console.error('Logout error:', error);
-      // Still clear user state even if logout API fails
+      console.error('useAuth logout error:', error);
+      
+      // Even if logout API fails, clear user state
       setUser(null);
-      message.warning('Logged out (with some issues)');
+      
+      // Force clear any remaining auth data (fallback only)
+      localStorage.removeItem('admin_access_token');
+      localStorage.removeItem('admin_refresh_token');
+      localStorage.removeItem('admin_user');
+      
+      console.log('useAuth: Forced cleanup due to error')
+      message.error('Logout failed, but local data cleared');
     } finally {
       setLoading(false);
     }

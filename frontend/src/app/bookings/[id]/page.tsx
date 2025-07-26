@@ -23,6 +23,7 @@ import {
 import { Booking } from '../../../types/booking';
 import { bookingService } from '../../../services/booking.service';
 import { formatCurrency, formatDate } from '../../../utils/format';
+import { calculateStallArea, formatStallDimensions } from '../../../utils/stallUtils';
 import { toast } from '../../../hooks/use-toast';
 
 export default function BookingConfirmationPage() {
@@ -252,24 +253,45 @@ export default function BookingConfirmationPage() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">
-                  {booking.calculations.stalls.map((stall, index) => (
-                    <div key={index} className="flex items-center justify-between p-3 border rounded-lg">
-                      <div>
-                        <p className="font-medium">Stall {stall.number}</p>
-                        <p className="text-sm text-muted-foreground">
-                          Base Amount: {formatCurrency(stall.baseAmount)}
-                        </p>
+                  {booking.calculations.stalls.map((stall, index) => {
+                    const area = stall.dimensions ? calculateStallArea(stall.dimensions) : stall.area || 0;
+                    
+                    return (
+                      <div key={index} className="p-4 border rounded-lg">
+                        <div className="flex items-start justify-between mb-3">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-2">
+                              <p className="font-semibold text-lg">Stall {stall.number}</p>
+                              <Badge variant="secondary" className="text-xs">
+                                {stall.stallTypeName || stall.stallType?.name || 'Standard Stall'}
+                              </Badge>
+                            </div>
+                            <div className="text-sm text-muted-foreground space-y-1">
+                              {stall.dimensions && (
+                                <p>
+                                  <span className="font-medium">Dimensions:</span> {formatStallDimensions(stall.dimensions)} = {area.toFixed(2)} m²
+                                </p>
+                              )}
+                              <p>
+                                <span className="font-medium">Rate:</span> {formatCurrency(stall.ratePerSqm)}/m²
+                              </p>
+                              <p>
+                                <span className="font-medium">Base Amount:</span> {formatCurrency(stall.baseAmount)}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <p className="font-semibold text-lg">{formatCurrency(stall.amountAfterDiscount)}</p>
+                            {stall.discount && (
+                              <p className="text-sm text-green-600">
+                                Discount: -{formatCurrency(stall.discount.amount)}
+                              </p>
+                            )}
+                          </div>
+                        </div>
                       </div>
-                      <div className="text-right">
-                        <p className="font-medium">{formatCurrency(stall.amountAfterDiscount)}</p>
-                        {stall.discount && (
-                          <p className="text-sm text-green-600">
-                            Discount: -{formatCurrency(stall.discount.amount)}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </CardContent>
             </Card>

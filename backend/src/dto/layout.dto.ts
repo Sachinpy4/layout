@@ -187,8 +187,8 @@ export class CreateStallDto {
   @IsOptional()
   stallTypeId?: string;
 
-  @ApiPropertyOptional({ description: 'Stall status', enum: ['available', 'booked', 'blocked', 'maintenance'] })
-  @IsEnum(['available', 'booked', 'blocked', 'maintenance'])
+  @ApiPropertyOptional({ description: 'Stall status', enum: ['available', 'reserved', 'booked', 'blocked', 'maintenance'] })
+  @IsEnum(['available', 'reserved', 'booked', 'blocked', 'maintenance'])
   @IsOptional()
   status?: string;
 
@@ -259,8 +259,8 @@ export class UpdateStallDto {
   @IsOptional()
   stallTypeId?: string;
 
-  @ApiPropertyOptional({ description: 'Stall status', enum: ['available', 'booked', 'blocked', 'maintenance'] })
-  @IsEnum(['available', 'booked', 'blocked', 'maintenance'])
+  @ApiPropertyOptional({ description: 'Stall status', enum: ['available', 'reserved', 'booked', 'blocked', 'maintenance'] })
+  @IsEnum(['available', 'reserved', 'booked', 'blocked', 'maintenance'])
   @IsOptional()
   status?: string;
 

@@ -9,7 +9,6 @@ import {
   Space,
   Typography,
   Badge,
-  Modal,
 } from 'antd'
 import {
   DashboardOutlined,
@@ -88,6 +87,36 @@ const MainLayout: React.FC = () => {
     },
   ]
 
+  const handleMenuClick = ({ key }: { key: string }) => {
+    navigate(key)
+  }
+
+  // Direct logout without confirmation
+  const handleLogout = async () => {
+    console.log('=== LOGOUT STARTED ===')
+    try {
+      // Call logout function FIRST (while token is still in localStorage)
+      await logout()
+      console.log('=== LOGOUT FUNCTION COMPLETED ===')
+      
+      // Navigate to login
+      navigate('/login', { replace: true })
+      console.log('=== NAVIGATION TO LOGIN COMPLETED ===')
+      
+    } catch (error) {
+      console.error('=== LOGOUT ERROR ===', error)
+      
+      // Even if logout API fails, still clear data and redirect
+      localStorage.removeItem('admin_access_token')
+      localStorage.removeItem('admin_refresh_token') 
+      localStorage.removeItem('admin_user')
+      console.log('=== FORCED LOCAL STORAGE CLEAR ===')
+      
+      // Force redirect even if logout fails
+      window.location.href = '/login'
+    }
+  }
+
   const userMenuItems = [
     {
       key: 'profile',
@@ -110,29 +139,13 @@ const MainLayout: React.FC = () => {
     },
   ]
 
-  const handleMenuClick = ({ key }: { key: string }) => {
-    navigate(key)
-  }
-
   const handleUserMenuClick = ({ key }: { key: string }) => {
+    console.log('=== USER MENU CLICKED ===', key)
+    
     if (key === 'logout') {
-      Modal.confirm({
-        title: 'Sign Out',
-        content: 'Are you sure you want to sign out of the admin panel?',
-        okText: 'Sign Out',
-        cancelText: 'Cancel',
-        okButtonProps: { danger: true },
-        onOk: async () => {
-          try {
-            await logout()
-            navigate('/login')
-          } catch (error) {
-            console.error('Logout failed:', error)
-          }
-        },
-      })
+      // Direct logout without confirmation
+      handleLogout()
     } else if (key === 'profile') {
-      // Handle profile navigation
       console.log('Profile clicked')
     } else if (key === 'settings') {
       navigate('/settings')

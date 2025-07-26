@@ -97,9 +97,22 @@ const LoginPage: React.FC = () => {
         <div className="bg-shape shape-3"></div>
       </div>
 
-      {/* Content */}
-      <Row className="login-content" justify="center" align="middle">
-        <Col xs={22} sm={16} md={12} lg={8} xl={6}>
+      {/* Content using Ant Design Grid System */}
+      <Row 
+        className="login-content" 
+        justify="center" 
+        align="middle"
+        style={{ minHeight: '100vh', padding: '20px 16px' }}
+      >
+        <Col 
+          xs={24} 
+          sm={20} 
+          md={16} 
+          lg={12} 
+          xl={8} 
+          xxl={6}
+          style={{ maxWidth: '400px' }}
+        >
           <Card className="login-card" bordered={false}>
             {/* Header */}
             <div className="login-header">
@@ -180,17 +193,21 @@ const LoginPage: React.FC = () => {
               </Form.Item>
 
               <Form.Item>
-                <div className="login-options">
-                  <Checkbox
-                    checked={rememberMe}
-                    onChange={(e) => setRememberMe(e.target.checked)}
-                  >
-                    Remember me
-                  </Checkbox>
-                  <Link className="forgot-password">
-                    Forgot password?
-                  </Link>
-                </div>
+                <Row justify="space-between" align="middle">
+                  <Col>
+                    <Checkbox
+                      checked={rememberMe}
+                      onChange={(e) => setRememberMe(e.target.checked)}
+                    >
+                      Remember me
+                    </Checkbox>
+                  </Col>
+                  <Col>
+                    <Link className="forgot-password">
+                      Forgot password?
+                    </Link>
+                  </Col>
+                </Row>
               </Form.Item>
 
               <Form.Item>

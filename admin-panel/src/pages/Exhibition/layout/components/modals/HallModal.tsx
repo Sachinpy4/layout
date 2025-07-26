@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Modal, Form, Input, InputNumber, Space, Button, ColorPicker, Card, Typography, Divider } from 'antd';
 import { HomeOutlined } from '@ant-design/icons';
 
@@ -29,20 +29,24 @@ const HallModal: React.FC<HallModalProps> = ({
 }) => {
   const [form] = Form.useForm();
 
-  // Update form when editingHall changes
-  React.useEffect(() => {
-    if (visible && editingHall && mode === 'edit') {
-      form.setFieldsValue({
-        name: editingHall.name,
-        width: editingHall.widthSqm,
-        height: editingHall.heightSqm,
-        color: editingHall.color || '#f6ffed',
-        description: editingHall.description || ''
-      });
+  // Populate form with hall data when in edit mode
+  useEffect(() => {
+    if (visible && mode === 'edit' && editingHall) {
+      if (form) { // Add safety check
+        form.setFieldsValue({
+          name: editingHall.name,
+          width: editingHall.widthSqm,
+          height: editingHall.heightSqm,
+          color: editingHall.color || '#f6ffed',
+          description: editingHall.description || ''
+        });
+      }
     } else if (visible && mode === 'create') {
-      form.resetFields();
+      if (form) { // Add safety check
+        form.resetFields();
+      }
     }
-  }, [visible, editingHall, mode, form]);
+  }, [visible, editingHall, mode]); // Remove form from dependencies
 
   const handleSubmit = async () => {
     try {

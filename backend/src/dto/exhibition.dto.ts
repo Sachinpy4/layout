@@ -125,6 +125,11 @@ export class CreateExhibitionDto {
   @IsString()
   endDate: string;
 
+  @ApiPropertyOptional({ description: 'Registration deadline' })
+  @IsOptional()
+  @IsString()
+  registrationDeadline?: string;
+
   @ApiPropertyOptional({ description: 'Exhibition status', enum: ['draft', 'published', 'completed'] })
   @IsOptional()
   @IsEnum(['draft', 'published', 'completed'])
@@ -367,6 +372,11 @@ export class UpdateExhibitionDto {
   @IsOptional()
   @IsString()
   endDate?: string;
+
+  @ApiPropertyOptional({ description: 'Registration deadline' })
+  @IsOptional()
+  @IsString()
+  registrationDeadline?: string;
 
   @ApiPropertyOptional({ description: 'Exhibition status', enum: ['draft', 'published', 'completed'] })
   @IsOptional()

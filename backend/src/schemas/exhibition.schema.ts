@@ -141,6 +141,11 @@ export class Exhibition {
   endDate: Date;
 
   @Prop({
+    index: true,
+  })
+  registrationDeadline?: Date;
+
+  @Prop({
     type: String,
     enum: ['draft', 'published', 'completed'],
     default: 'draft',

@@ -7,11 +7,16 @@
  * 3. Separating visual drag state from actual data state
  * 4. Reducing render complexity during drag
  * 5. Implementing modal-aware grid toggling
+ * 
+ * 🎯 SMART GRID MANAGEMENT:
+ * - Exhibition Space grid: Hidden when managing stalls (viewMode === 'stall')
+ * - Hall grids: Always visible when managing stalls (for positioning)
+ * - Stalls: No internal grids (positioned within halls)
  */
 
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { Group, Rect, Line } from 'react-konva';
-import { LayoutData } from '../types/layout-types';
+import { LayoutData, ViewMode } from '../types/layout-types';
 
 interface DragPreviewState {
   isDragging: boolean;
@@ -29,13 +34,15 @@ interface OptimizedDragSystemProps {
   children: React.ReactNode;
   onDragComplete: (targetId: string, targetType: 'space' | 'hall' | 'stall' | 'fixture', finalX: number, finalY: number) => Promise<void>;
   isModalOpen?: boolean; // For hiding grid when modal is open
+  viewMode?: ViewMode; // Control grid visibility based on current view mode
 }
 
 export const OptimizedDragSystem: React.FC<OptimizedDragSystemProps> = ({
   layout,
   children,
   onDragComplete: _onDragComplete,
-  isModalOpen = false
+  isModalOpen = false,
+  viewMode
 }) => {
   const [dragState, _setDragState] = useState<DragPreviewState>({
     isDragging: false,
@@ -64,7 +71,18 @@ export const OptimizedDragSystem: React.FC<OptimizedDragSystemProps> = ({
 
   // Render optimized grid (hidden during drag or when modal is open)
   const renderOptimizedGrid = () => {
-    if (!layout.showGrid || dragState.isDragging || isModalOpen || !layout.space) {
+    // Hide exhibition space grid when:
+    // 1. Grid is disabled in layout
+    // 2. Currently dragging
+    // 3. Modal is open
+    // 4. No exhibition space exists
+    // 5. In stall management mode (we only want hall grids, not exhibition space grid)
+    //    This allows users to see hall grids for positioning stalls without exhibition space clutter
+    if (!layout.showGrid || 
+        dragState.isDragging || 
+        isModalOpen || 
+        !layout.space ||
+        viewMode === 'stall') {
       return null;
     }
 

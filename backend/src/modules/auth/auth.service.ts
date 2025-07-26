@@ -53,7 +53,11 @@ export class AuthService {
     const payload = {
       sub: user._id,
       email: user.email,
-      role: user.role.name,
+      role: {
+        name: user.role.name,
+        permissions: user.role.permissions || []
+      },
+      permissions: user.permissions || [],
       type: 'user',
     };
 
@@ -202,7 +206,8 @@ export class AuthService {
       const newPayload = {
         sub: payload.sub,
         email: payload.email,
-        role: payload.role,
+        role: payload.role, // This will now include permissions
+        permissions: payload.permissions || [],
         type: payload.type,
       };
 

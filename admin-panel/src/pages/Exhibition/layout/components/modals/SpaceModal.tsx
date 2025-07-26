@@ -27,19 +27,22 @@ const SpaceModal: React.FC<SpaceModalProps> = ({
 }) => {
   const [form] = Form.useForm();
 
-  // Populate form when editing existing space
+  // Populate form with existing space data when in edit mode
   useEffect(() => {
     if (visible && mode === 'edit' && existingSpace) {
-      form.setFieldsValue({
-        name: existingSpace.name,
-        widthSqm: existingSpace.widthSqm,
-        heightSqm: existingSpace.heightSqm
-      });
+      if (form) { // Add safety check
+        form.setFieldsValue({
+          name: existingSpace.name,
+          widthSqm: existingSpace.widthSqm,
+          heightSqm: existingSpace.heightSqm,
+        });
+      }
     } else if (visible && mode === 'create') {
-      form.resetFields();
+      if (form) { // Add safety check
+        form.resetFields();
+      }
     }
-  }, [visible, mode, existingSpace, form]);
-
+  }, [visible, mode, existingSpace]); // Remove form from dependencies
 
 
   const getModalTitle = () => {

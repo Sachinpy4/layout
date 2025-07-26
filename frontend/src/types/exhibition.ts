@@ -1,6 +1,7 @@
 export interface Exhibition {
   _id: string;
   name: string;
+  slug?: string; // Added for SEO-friendly URLs
   description: string;
   venue: string;
   startDate: string;
@@ -12,6 +13,13 @@ export interface Exhibition {
   organizerName: string;
   organizerEmail: string;
   organizerPhone: string;
+  
+  // Company Details (from backend schema)
+  companyName?: string;
+  companyEmail?: string;
+  companyContactNo?: string;
+  companyWebsite?: string;
+  companyAddress?: string;
   registrationDeadline: string;
   maxExhibitors: number;
   currentExhibitors: number;
@@ -105,7 +113,7 @@ export interface Stall {
   totalPrice: number;
   isBooked: boolean;
   bookedBy?: string;
-  status: 'available' | 'booked' | 'blocked';
+  status: 'available' | 'reserved' | 'booked' | 'blocked';
 }
 
 export interface StallType {

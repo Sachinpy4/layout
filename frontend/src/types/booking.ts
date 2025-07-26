@@ -20,6 +20,12 @@ export interface StallCalculation {
   };
   discount?: BookingDiscount;
   amountAfterDiscount: number;
+  // Added fields from backend enhancement
+  stallType?: {
+    _id: string;
+    name: string;
+  };
+  stallTypeName?: string;
 }
 
 // Tax calculation

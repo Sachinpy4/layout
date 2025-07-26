@@ -22,6 +22,7 @@ import {
   isOngoing,
   isExpired
 } from '@/lib/utils';
+import { getExhibitionUrl } from '@/utils/format'; // Added for slug-based URLs
 
 // Loading fallback component
 function ExhibitionsLoadingFallback() {
@@ -348,7 +349,7 @@ function ExhibitionCard({ exhibition }: { exhibition: Exhibition }) {
           {/* Action Button */}
           <div className="pt-2">
             {isEffectivelyActive && !isExpired(exhibition.endDate) ? (
-              <Link href={`/exhibitions/${exhibition._id}` as any}>
+              <Link href={getExhibitionUrl(exhibition) as any}>
                 <Button className="w-full">
                   View Stalls
                 </Button>

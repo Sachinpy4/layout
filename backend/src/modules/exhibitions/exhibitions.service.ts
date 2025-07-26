@@ -4,12 +4,14 @@ import { Model } from 'mongoose';
 import { Exhibition } from '../../schemas/exhibition.schema';
 import { StallType } from '../../schemas/stall-type.schema';
 import { CreateExhibitionDto, UpdateExhibitionDto } from '../../dto/exhibition.dto';
+import { ImageHelperService } from './image-helper.service';
 
 @Injectable()
 export class ExhibitionsService {
   constructor(
     @InjectModel(Exhibition.name) private exhibitionModel: Model<Exhibition>,
     @InjectModel(StallType.name) private stallTypeModel: Model<StallType>,
+    private readonly imageHelperService: ImageHelperService,
   ) {}
 
   async create(createExhibitionDto: CreateExhibitionDto, userId: string): Promise<Exhibition> {
@@ -29,15 +31,39 @@ export class ExhibitionsService {
                    .replace(/[^a-z0-9\s-]/g, '')
                    .replace(/\s+/g, '-');
 
+    // Migrate any base64 images to files before saving
+    const migratedImages = await this.imageHelperService.migrateExhibitionImages(
+      'temp-' + Date.now(), // Temporary ID for creation
+      {
+        headerLogo: createExhibitionDto.headerLogo,
+        sponsorLogos: createExhibitionDto.sponsorLogos,
+        footerLogo: createExhibitionDto.footerLogo,
+      }
+    );
+
     const exhibition = new this.exhibitionModel({
       ...createExhibitionDto,
+      ...migratedImages, // Use migrated file paths
       slug,
       createdBy: userId,
       status: createExhibitionDto.status || 'draft',
       isActive: createExhibitionDto.isActive !== undefined ? createExhibitionDto.isActive : true,
     });
 
-    return exhibition.save();
+    const savedExhibition = await exhibition.save();
+
+    // Update file names with actual exhibition ID
+    if (migratedImages.headerLogo || migratedImages.sponsorLogos || migratedImages.footerLogo) {
+      const finalMigratedImages = await this.imageHelperService.migrateExhibitionImages(
+        savedExhibition._id.toString(),
+        migratedImages
+      );
+
+      await this.exhibitionModel.findByIdAndUpdate(savedExhibition._id, finalMigratedImages);
+      return { ...savedExhibition.toObject(), ...finalMigratedImages };
+    }
+
+    return savedExhibition;
   }
 
   async findAll(query?: any): Promise<{
@@ -208,6 +234,12 @@ export class ExhibitionsService {
     console.log('discountConfig in request:', updateExhibitionDto.discountConfig);
     console.log('publicDiscountConfig in request:', updateExhibitionDto.publicDiscountConfig);
     
+    // Get existing exhibition for cleanup
+    const existingExhibition = await this.exhibitionModel.findById(id);
+    if (!existingExhibition) {
+      throw new NotFoundException('Exhibition not found');
+    }
+    
     // Create update object by filtering out undefined values to prevent clearing existing data
     const updateData: any = {};
     
@@ -235,6 +267,28 @@ export class ExhibitionsService {
         return true;
       });
     }
+
+    // MIGRATE IMAGES: Convert any base64 images to files
+    const migratedImages = await this.imageHelperService.migrateExhibitionImages(id, {
+      headerLogo: updateData.headerLogo,
+      sponsorLogos: updateData.sponsorLogos,
+      footerLogo: updateData.footerLogo,
+    });
+
+    // Clean up old files if new ones were created
+    if (migratedImages.headerLogo !== updateData.headerLogo ||
+        JSON.stringify(migratedImages.sponsorLogos) !== JSON.stringify(updateData.sponsorLogos) ||
+        migratedImages.footerLogo !== updateData.footerLogo) {
+      
+      await this.imageHelperService.cleanupOldImages({
+        headerLogo: existingExhibition.headerLogo,
+        sponsorLogos: existingExhibition.sponsorLogos,
+        footerLogo: existingExhibition.footerLogo,
+      });
+    }
+
+    // Use migrated image paths
+    Object.assign(updateData, migratedImages);
 
     // Always update the timestamp
     updateData.updatedAt = new Date();

@@ -9,8 +9,9 @@ import dayjs from 'dayjs'
 const { Title } = Typography
 
 // Extended form type for edit page that includes dateRange
-interface EditExhibitionForm extends Partial<CreateExhibitionForm> {
+interface EditExhibitionForm extends Omit<Partial<CreateExhibitionForm>, 'registrationDeadline'> {
   dateRange?: [dayjs.Dayjs, dayjs.Dayjs]
+  registrationDeadline?: dayjs.Dayjs
 }
 
 const EditExhibitionPage: React.FC = () => {
@@ -46,14 +47,6 @@ const EditExhibitionPage: React.FC = () => {
     try {
       setSubmitting(true)
       
-      console.log('=== EDIT PAGE SUBMISSION DEBUG ===')
-      console.log('Original exhibition data:', exhibition)
-      console.log('Form values received:', values)
-      console.log('stallRates in form values:', values.stallRates)
-      console.log('taxConfig in form values:', values.taxConfig)
-      console.log('discountConfig in form values:', values.discountConfig)
-      console.log('publicDiscountConfig in form values:', values.publicDiscountConfig)
-      
       // Merge form values with existing exhibition data to prevent field loss
       const mergedValues = {
         // Start with original exhibition data (preserving all fields)
@@ -68,21 +61,12 @@ const EditExhibitionPage: React.FC = () => {
         updatedAt: new Date().toISOString()
       }
       
-      console.log('Merged values before cleanup:', mergedValues)
-      console.log('stallRates in merged:', mergedValues.stallRates)
-      console.log('discountConfig in merged:', mergedValues.discountConfig)
-      console.log('publicDiscountConfig in merged:', mergedValues.publicDiscountConfig)
-      
       // Remove internal fields that shouldn't be sent to backend
       const { id, _id, createdAt, updatedAt, ...updateData } = mergedValues
       
-      console.log('Final update data being sent to backend:', updateData)
-      console.log('stallRates in final data:', updateData.stallRates)
-      console.log('discountConfig in final data:', updateData.discountConfig)
-      console.log('publicDiscountConfig in final data:', updateData.publicDiscountConfig)
-      
       const exhibitionService = await import('../../../services/exhibition.service')
-            await exhibitionService.default.updateExhibition(id!, updateData)
+      await exhibitionService.default.updateExhibition(id!, updateData)
+      
       message.success('Exhibition updated successfully!')
       navigate('/exhibitions')
     } catch (error) {
@@ -144,7 +128,8 @@ const EditExhibitionPage: React.FC = () => {
       dateRange: exhibition.startDate && exhibition.endDate ? [
         dayjs(exhibition.startDate),
         dayjs(exhibition.endDate)
-      ] : undefined
+      ] : undefined,
+      registrationDeadline: exhibition.registrationDeadline ? dayjs(exhibition.registrationDeadline) : undefined
     }
   }
 
@@ -221,7 +206,7 @@ const EditExhibitionPage: React.FC = () => {
       >
         <ExhibitionForm 
           onSubmit={handleSubmit} 
-          initialValues={getInitialValues()}
+          initialValues={getInitialValues() as Partial<CreateExhibitionForm>}
           loading={submitting}
           isEditing={true}
         />

@@ -290,10 +290,42 @@ export class ExhibitionService {
     throw new Error(response.error || 'Failed to fetch exhibition details');
   }
 
+  // Get exhibition by slug (SEO-friendly URLs)
+  static async getExhibitionBySlug(slug: string): Promise<Exhibition> {
+    const response = await apiRequest<Exhibition>(() =>
+      api.get(`/exhibitions/slug/${slug}`)
+    );
+
+    if (response.success && response.data) {
+      return response.data;
+    }
+
+    throw new Error(response.error || 'Failed to fetch exhibition details');
+  }
+
+  // Get exhibition by ID or slug (unified method)
+  static async getExhibition(identifier: string): Promise<Exhibition> {
+    // Try slug first (if it doesn't look like a MongoDB ObjectId)
+    if (!/^[0-9a-fA-F]{24}$/.test(identifier)) {
+      try {
+        return await this.getExhibitionBySlug(identifier);
+      } catch (error) {
+        // If slug fails, fallback to ID
+        console.warn(`Failed to fetch by slug '${identifier}', trying as ID...`);
+      }
+    }
+    
+    // Fallback to ID-based fetch
+    return await this.getExhibitionById(identifier);
+  }
+
   // Get exhibition with layout and stall types
-  static async getExhibitionWithLayout(id: string): Promise<ExhibitionWithLayout> {
+  static async getExhibitionWithLayout(identifier: string): Promise<ExhibitionWithLayout> {
+    // First get the exhibition to resolve slug/ID
+    const exhibition = await this.getExhibition(identifier);
+    
     const response = await apiRequest<ExhibitionWithLayout>(() =>
-      api.get(`/exhibitions/${id}/full`)
+      api.get(`/exhibitions/${exhibition._id}/full`)
     );
 
     if (response.success && response.data) {
@@ -304,10 +336,16 @@ export class ExhibitionService {
   }
 
   // Get exhibition layout
-  static async getExhibitionLayout(exhibitionId: string, stallTypes?: StallType[], exhibition?: Exhibition): Promise<Layout> {
+  static async getExhibitionLayout(exhibitionIdentifier: string, stallTypes?: StallType[], exhibition?: Exhibition): Promise<Layout> {
     try {
+      // First resolve the exhibition (handles both slug and ID)
+      let resolvedExhibition = exhibition;
+      if (!resolvedExhibition) {
+        resolvedExhibition = await this.getExhibition(exhibitionIdentifier);
+      }
+
       const response = await apiRequest<any>(() =>
-        api.get(`/layout/exhibition/${exhibitionId}`)
+        api.get(`/layout/exhibition/${exhibitionIdentifier}`) // Backend now handles slug resolution
       );
 
       if (response.success && response.data) {
@@ -315,24 +353,16 @@ export class ExhibitionService {
         let stallTypesForCalculation = stallTypes;
         if (!stallTypesForCalculation) {
           try {
-            stallTypesForCalculation = await this.getStallTypes(exhibitionId);
+            stallTypesForCalculation = await this.getStallTypes(resolvedExhibition._id); // Use resolved exhibition ID
           } catch (error) {
             console.warn('⚠️ Could not fetch stall types for price calculation:', error);
             stallTypesForCalculation = [];
           }
         }
         
-        // If exhibition not provided, fetch it for stall rates calculation
-        let exhibitionData = exhibition;
-        if (!exhibitionData) {
-          try {
-            exhibitionData = await this.getExhibitionById(exhibitionId);
-            console.log('📊 Fetched exhibition data for stall rates:', exhibitionData.stallRates?.length || 0, 'custom rates configured');
-          } catch (error) {
-            console.warn('⚠️ Could not fetch exhibition data for stall rates:', error);
-            exhibitionData = undefined;
-          }
-        }
+        // Use resolved exhibition data
+        const exhibitionData = resolvedExhibition;
+        console.log('📊 Using exhibition data for stall rates:', exhibitionData.stallRates?.length || 0, 'custom rates configured');
         
         // Transform nested backend format to flat frontend format with price calculation
         return transformBackendLayoutToFrontend(response.data, stallTypesForCalculation, exhibitionData);
@@ -342,10 +372,10 @@ export class ExhibitionService {
     } catch (error: any) {
       // If layout doesn't exist, return a default empty layout
       if (error.message?.includes('Layout not found') || error.message?.includes('404')) {
-        console.warn(`No layout found for exhibition ${exhibitionId}, returning empty layout`);
+        console.warn(`No layout found for exhibition ${exhibitionIdentifier}, returning empty layout`);
         return {
           _id: 'default',
-          exhibitionId,
+          exhibitionId: exhibitionIdentifier, // Use the identifier that was resolved
           spaces: [],
           halls: [],
           stalls: [],
@@ -361,9 +391,12 @@ export class ExhibitionService {
   }
 
   // Get stall types for an exhibition
-  static async getStallTypes(exhibitionId: string): Promise<StallType[]> {
+  static async getStallTypes(exhibitionIdentifier: string): Promise<StallType[]> {
+    // Resolve exhibition identifier to get the actual ID
+    const exhibition = await this.getExhibition(exhibitionIdentifier);
+    
     const response = await apiRequest<StallType[]>(() =>
-      api.get(`/stall-types?exhibitionId=${exhibitionId}`)
+      api.get(`/stall-types?exhibitionId=${exhibition._id}`)
     );
 
     if (response.success && response.data) {

@@ -254,6 +254,21 @@ const BasicInformationTab: React.FC<BasicInformationTabProps> = ({ form }) => {
 
           <Col xs={24} md={12}>
             <Form.Item
+              name="registrationDeadline"
+              label="Registration Deadline"
+              tooltip="Last date for registration submissions"
+            >
+              <DatePicker
+                size="large"
+                style={{ width: '100%' }}
+                disabledDate={(current) => current && current < dayjs().startOf('day')}
+                placeholder="Select registration deadline"
+              />
+            </Form.Item>
+          </Col>
+
+          <Col xs={24} md={12}>
+            <Form.Item
               name="invoicePrefix"
               label="Invoice Prefix"
               tooltip="Prefix for invoice numbers (e.g., EXH2024)"

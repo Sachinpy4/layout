@@ -119,16 +119,22 @@ class AuthService {
 
   // Logout
   async logout(): Promise<void> {
+    console.log('AuthService: Starting logout process...')
+    
     try {
-      // Call backend logout endpoint
+      // Call backend logout endpoint FIRST (while token is still available)
+      console.log('AuthService: Calling backend logout endpoint...')
       await authApi.post('/logout');
-    } catch (error) {
-      // Even if backend call fails, clear local storage
-      console.warn('Logout API call failed:', error);
-    } finally {
-      // Clear all stored data
-      this.clearAuthData();
+      console.log('AuthService: Backend logout call successful')
+    } catch (error: any) {
+      // Log the error but continue with local cleanup
+      console.warn('AuthService: Logout API call failed:', error?.response?.data || error.message);
     }
+    
+    // Clear all stored data after API call (success or failure)
+    console.log('AuthService: Clearing auth data from localStorage...')
+    this.clearAuthData();
+    console.log('AuthService: Auth data cleared successfully')
   }
 
   // Refresh access token

@@ -1,12 +1,14 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import { Header } from '@/components/layout/Header';
 import { LayoutControls } from '@/components/layout/LayoutControls';
 import { BookingSummary } from '@/components/layout/BookingSummary';
+import StallTooltip from '@/components/layout/StallTooltip';
+import { getExhibitionUrl } from '../../../../utils/format'; // Added for slug-based URLs
 
 // Dynamically import LayoutCanvas to avoid SSR issues with Konva.js
 const LayoutCanvas = dynamic(
@@ -50,6 +52,9 @@ function LayoutViewer() {
   const { id } = useParams();
   const router = useRouter();
   const [exhibition, setExhibition] = useState<Exhibition | null>(null);
+  const [isInitialLoading, setIsInitialLoading] = useState(true);
+  const [mousePosition, setMousePosition] = useState<{ x: number; y: number } | null>(null);
+  const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const { toast } = useToast();
   const { setSelectedStalls, setCurrentBooking, selectedStalls: bookingStalls } = useBooking();
   
@@ -78,6 +83,15 @@ function LayoutViewer() {
     loadLayoutData();
   }, [id]);
 
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (hoverTimeoutRef.current) {
+        clearTimeout(hoverTimeoutRef.current);
+      }
+    };
+  }, []);
+
   const loadLayoutData = async () => {
     if (!id || typeof id !== 'string') return;
     
@@ -89,7 +103,7 @@ function LayoutViewer() {
       
       // Load exhibition and stall types first, then layout with proper pricing
       const [exhibitionData, stallTypesData] = await Promise.all([
-        ExhibitionService.getExhibitionById(id),
+        ExhibitionService.getExhibition(id), // Changed to slug-aware method
         ExhibitionService.getStallTypes(id),
       ]);
       
@@ -125,6 +139,7 @@ function LayoutViewer() {
       });
     } finally {
       setLoading(false);
+      setIsInitialLoading(false);
     }
   };
 
@@ -144,8 +159,34 @@ function LayoutViewer() {
     }
   };
 
-  // Loading state
-  if (state.loading) {
+  // Handle stall hover with debouncing to prevent blinking
+  const handleStallHover = useCallback((stallId: string | null, mousePos?: { x: number; y: number }) => {
+    // Clear any existing timeout
+    if (hoverTimeoutRef.current) {
+      clearTimeout(hoverTimeoutRef.current);
+    }
+
+    if (stallId) {
+      // Immediately show hover state for responsiveness
+      setHoveredStall(stallId);
+      setMousePosition(mousePos || null);
+    } else {
+      // Delay hiding the tooltip slightly to prevent blinking
+      hoverTimeoutRef.current = setTimeout(() => {
+        setHoveredStall(null);
+        setMousePosition(null);
+      }, 50); // Small delay to prevent rapid on/off
+    }
+  }, [setHoveredStall]);
+
+  // Get hovered stall data for tooltip
+  const hoveredStallData = state.hoveredStall ? 
+    state.layout?.stalls?.find(stall => stall._id === state.hoveredStall) || null : null;
+  const hoveredStallType = hoveredStallData ? 
+    state.stallTypes.find(type => type._id === hoveredStallData.stallTypeId) || null : null;
+
+  // Initial loading state - show loading until data is fetched
+  if (isInitialLoading || state.loading) {
     return <LayoutViewerSkeleton />;
   }
 
@@ -183,7 +224,7 @@ function LayoutViewer() {
           <nav className="text-sm text-gray-500 mb-4">
             <Link href={"/exhibitions" as any} className="hover:text-gray-700">Exhibitions</Link>
             <span className="mx-2">/</span>
-            <Link href={`/exhibitions/${exhibition._id}` as any} className="hover:text-gray-700">
+            <Link href={getExhibitionUrl(exhibition) as any} className="hover:text-gray-700">
               {exhibition.name}
             </Link>
             <span className="mx-2">/</span>
@@ -195,17 +236,6 @@ function LayoutViewer() {
               <h1 className="text-2xl font-bold text-gray-900">{exhibition.name}</h1>
               <p className="text-gray-600">Select stalls from the interactive layout below</p>
             </div>
-            
-            {hasSelection && (
-              <div className="text-right">
-                <div className="text-sm text-gray-600">
-                  {selectedStallsArray.length} stall{selectedStallsArray.length !== 1 ? 's' : ''} selected
-                </div>
-                <div className="text-lg font-bold text-gray-900">
-                  {formatPrice(bookingCalculation.total)}
-                </div>
-              </div>
-            )}
           </div>
         </div>
       </div>
@@ -226,30 +256,8 @@ function LayoutViewer() {
 
 
 
-          {/* Legend */}
-          <div className="absolute bottom-4 left-4 z-10">
-            <Card className="p-4">
-              <h4 className="font-medium text-gray-900 mb-3">Legend</h4>
-              <div className="space-y-2 text-sm">
-                <div className="flex items-center gap-2">
-                  <div className="w-4 h-4 bg-green-400 border rounded"></div>
-                  <span>Available</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-4 h-4 bg-blue-500 border rounded"></div>
-                  <span>Selected</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-4 h-4 bg-gray-300 border rounded"></div>
-                  <span>Booked</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-4 h-4 bg-blue-300 border rounded"></div>
-                  <span>Hovered</span>
-                </div>
-              </div>
-            </Card>
-          </div>
+          {/* Legend - REMOVED FROM HERE */}
+          {/* Legend moved to sidebar below booking summary */}
 
           {/* Canvas */}
           <LayoutCanvas
@@ -259,7 +267,7 @@ function LayoutViewer() {
             selectedStalls={new Set(state.selectedStalls.keys())}
             hoveredStall={state.hoveredStall}
             onStallClick={handleStallClick}
-            onStallHover={setHoveredStall}
+            onStallHover={handleStallHover}
             onViewportChange={setViewport}
             className="flex-1"
           />
@@ -267,7 +275,7 @@ function LayoutViewer() {
 
         {/* Sidebar */}
         <div className="w-80 bg-white border-l overflow-y-auto">
-          <div className="p-4">
+          <div className="p-4 space-y-4">
             <BookingSummary
               selectedStalls={selectedStallsArray}
               bookingCalculation={bookingCalculation}
@@ -277,33 +285,142 @@ function LayoutViewer() {
               onClearSelection={clearSelection}
             />
 
-
+            {/* Stall Status Legend */}
+            <Card className="p-4">
+              <h4 className="font-medium text-gray-900 mb-3">Stall Status</h4>
+              <div className="space-y-2 text-sm">
+                <div className="flex items-center gap-2">
+                  <div className="w-4 h-4 bg-green-400 border rounded"></div>
+                  <span>Available</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-4 h-4 bg-orange-400 border rounded"></div>
+                  <span>Reserved</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-4 h-4 bg-yellow-400 border rounded"></div>
+                  <span>Booked</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-4 h-4 bg-blue-500 border rounded"></div>
+                  <span>Selected</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-4 h-4 bg-blue-300 border rounded"></div>
+                  <span>Hovered</span>
+                </div>
+              </div>
+            </Card>
           </div>
         </div>
       </div>
+
+      {/* Stall Tooltip */}
+      <StallTooltip
+        stall={hoveredStallData}
+        stallType={hoveredStallType}
+        mousePosition={mousePosition}
+        visible={!!state.hoveredStall && !!mousePosition}
+      />
     </div>
   );
 }
 
 function LayoutViewerSkeleton() {
   return (
-    <div className="flex flex-col h-screen">
+    <div className="flex flex-col h-screen bg-gray-50">
+      {/* Header skeleton */}
       <div className="bg-white border-b p-4">
         <div className="max-w-7xl mx-auto">
           <div className="animate-pulse">
-            <div className="h-4 bg-gray-200 rounded w-64 mb-4"></div>
-            <div className="h-8 bg-gray-200 rounded w-96 mb-2"></div>
-            <div className="h-4 bg-gray-200 rounded w-80"></div>
+            {/* Breadcrumb skeleton */}
+            <div className="flex items-center space-x-2 mb-4">
+              <div className="h-4 bg-gray-200 rounded w-20"></div>
+              <div className="h-4 bg-gray-300 rounded w-1"></div>
+              <div className="h-4 bg-gray-200 rounded w-32"></div>
+              <div className="h-4 bg-gray-300 rounded w-1"></div>
+              <div className="h-4 bg-gray-200 rounded w-28"></div>
+            </div>
+            
+            {/* Title and description skeleton */}
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="h-8 bg-gray-200 rounded w-96 mb-2"></div>
+                <div className="h-4 bg-gray-200 rounded w-80"></div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
       
+      {/* Main content skeleton */}
       <div className="flex-1 flex">
-        <div className="flex-1 bg-gray-100 animate-pulse"></div>
+        {/* Canvas area */}
+        <div className="flex-1 relative bg-gray-100">
+          {/* Controls skeleton */}
+          <div className="absolute top-4 left-4 z-10">
+            <div className="bg-white rounded-lg shadow-md p-2 animate-pulse">
+              <div className="flex items-center space-x-2">
+                <div className="h-8 w-8 bg-gray-200 rounded"></div>
+                <div className="h-6 w-12 bg-gray-200 rounded"></div>
+                <div className="h-8 w-8 bg-gray-200 rounded"></div>
+                <div className="w-px h-6 bg-gray-300"></div>
+                <div className="h-8 w-8 bg-gray-200 rounded"></div>
+              </div>
+            </div>
+          </div>
+
+          {/* Legend skeleton */}
+          <div className="absolute bottom-4 left-4 z-10">
+            <div className="bg-white rounded-lg shadow-md p-4 animate-pulse">
+              <div className="h-5 bg-gray-200 rounded w-16 mb-3"></div>
+              <div className="space-y-2">
+                {[1, 2, 3, 4].map(i => (
+                  <div key={i} className="flex items-center gap-2">
+                    <div className="w-4 h-4 bg-gray-200 rounded"></div>
+                    <div className="h-4 bg-gray-200 rounded w-16"></div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Loading message in center */}
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className="text-center">
+              <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-100 rounded-full mb-4">
+                <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+              </div>
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">Loading Exhibition Layout</h3>
+              <p className="text-gray-600 mb-4">Please wait while we prepare the interactive layout...</p>
+              <div className="flex items-center justify-center space-x-1">
+                <div className="w-2 h-2 bg-blue-600 rounded-full animate-bounce"></div>
+                <div className="w-2 h-2 bg-blue-600 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+                <div className="w-2 h-2 bg-blue-600 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Sidebar skeleton */}
         <div className="w-80 bg-white border-l p-4">
           <div className="animate-pulse space-y-4">
-            <div className="h-48 bg-gray-200 rounded"></div>
-            <div className="h-32 bg-gray-200 rounded"></div>
+            {/* Booking summary skeleton */}
+            <div className="border rounded-lg">
+              <div className="p-4 border-b">
+                <div className="flex items-center justify-between">
+                  <div className="h-6 bg-gray-200 rounded w-32"></div>
+                  <div className="h-5 bg-gray-200 rounded w-16"></div>
+                </div>
+              </div>
+              <div className="p-4">
+                <div className="text-center py-8">
+                  <div className="h-12 w-12 bg-gray-200 rounded mx-auto mb-2"></div>
+                  <div className="h-4 bg-gray-200 rounded w-32 mx-auto mb-2"></div>
+                  <div className="h-3 bg-gray-200 rounded w-48 mx-auto"></div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>

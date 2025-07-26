@@ -53,6 +53,7 @@ export interface Exhibition {
   venue: string;
   startDate: string;
   endDate: string;
+  registrationDeadline?: string;
   status: 'draft' | 'published' | 'completed';
   isActive: boolean;
   createdBy: string;
@@ -223,6 +224,7 @@ export interface CreateExhibitionForm {
   venue: string;
   startDate: string;
   endDate: string;
+  registrationDeadline?: string;
   status: 'draft' | 'published' | 'completed';
   isActive: boolean;
   invoicePrefix?: string;

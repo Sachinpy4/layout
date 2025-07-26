@@ -20,7 +20,6 @@ import {
   renderStalls, 
   renderFixtures 
 } from './LayoutCanvasRenderers';
-import OptimizedDragSystem from './OptimizedDragSystem';
 
 /*
  * 🚀 ULTRA HIGH-PERFORMANCE LAYOUT CANVAS 2025
@@ -56,16 +55,13 @@ interface LayoutCanvasProps {
   layout: LayoutData;
   viewMode: ViewMode;
   onMouseDown: (e: any, targetId: string, targetType: 'space' | 'hall' | 'stall' | 'fixture') => void;
-  onMouseMove: (e: any) => void;
-  onMouseUp: () => void;
-  onWheel: (e: any) => void;
   onEditStall?: (stallId: string) => void;
   onEditHall?: (hallId: string) => void;
   onHallSelect?: (hallId: string) => void;
   onPositionUpdate: (targetId: string, targetType: 'space' | 'hall' | 'stall' | 'fixture', newX: number, newY: number) => void;
   onDragComplete: (targetId: string, targetType: 'space' | 'hall' | 'stall' | 'fixture', finalX: number, finalY: number) => Promise<void>;
   onHallSelectForDelete?: (hallId: string | null) => void;
-  isModalOpen?: boolean; // For optimized grid toggling
+  isModalOpen?: boolean;
 }
 
 const LayoutCanvas: React.FC<LayoutCanvasProps> = ({
@@ -267,39 +263,34 @@ const LayoutCanvas: React.FC<LayoutCanvasProps> = ({
         y={position.y}
         scaleX={scale}
         scaleY={scale}
-        perfectDrawEnabled={!isDragging && !isDraggingStall && !isModalOpen}
-        listening={!isDragging && !isModalOpen}
+        // SIMPLIFIED PERFORMANCE SETTINGS (matching smooth frontend)
+        perfectDrawEnabled={!isDragging}
+        listening={!isDragging}
         pixelRatio={
-          (isDragging || isDraggingStall || isModalOpen) ? 
-            (isMobile ? 0.5 : 0.8) : // Reduce quality during drag/modal for performance
+          isDragging ? 
+            (isMobile ? 0.5 : 0.8) : // Reduce quality during drag for performance
             Math.min(1.5, window.devicePixelRatio || 1)
         }
       >
-        {/* Ultra high-performance layer with OptimizedDragSystem */}
+        {/* Simplified high-performance layer (matching frontend approach) */}
         <Layer
           ref={layerRef}
-          clearBeforeDraw={!isDraggingStall && !isModalOpen}
-          hitGraphEnabled={!isDragging && !isDraggingStall && !isModalOpen}
-          listening={!isDragging && !isModalOpen}
+          imageSmoothingEnabled={!isDragging}
+          perfectDrawEnabled={!isDragging}
+          listening={!isDragging}
         >
-          {/* Optimized drag system with grid management */}
-          <OptimizedDragSystem
-            layout={layout}
-            onDragComplete={onDragComplete}
-            isModalOpen={isModalOpen}
-          >
-            {/* Exhibition space */}
-            {renderExhibitionSpace(renderProps)}
-            
-            {/* Halls */}
-            {renderHalls(renderProps)}
-            
-            {/* Stalls with performance optimizations */}
-            {renderStalls(renderProps)}
-            
-            {/* Fixtures */}
-            {renderFixtures(renderProps)}
-          </OptimizedDragSystem>
+          {/* Direct rendering without wrapper (like frontend) */}
+          {/* Exhibition space */}
+          {renderExhibitionSpace(renderProps)}
+          
+          {/* Halls */}
+          {renderHalls(renderProps)}
+          
+          {/* Stalls with performance optimizations */}
+          {renderStalls(renderProps)}
+          
+          {/* Fixtures */}
+          {renderFixtures(renderProps)}
         </Layer>
       </Stage>
       

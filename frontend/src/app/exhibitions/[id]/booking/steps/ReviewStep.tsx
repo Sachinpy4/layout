@@ -25,6 +25,7 @@ import { formatCurrency } from '@/utils/format';
 import { Exhibition } from '@/types/exhibition';
 import { BookingCalculations } from '@/types/booking';
 import { calculateStallArea, formatStallDimensions } from '@/utils/stallUtils';
+import { useAuth } from '@/contexts/auth.context';
 
 interface ReviewStepProps {
   exhibition: Exhibition | null;
@@ -84,12 +85,14 @@ const ReviewStep: React.FC<ReviewStepProps> = ({
   onSubmit,
   isSubmitting
 }) => {
+  const { user } = useAuth();
+  
   const [customerData, setCustomerData] = useState({
-    customerName: formData.customerName || '',
-    customerEmail: formData.customerEmail || '',
-    customerPhone: formData.customerPhone || '',
-    customerAddress: formData.customerAddress || '',
-    companyName: formData.companyName || '',
+    customerName: formData.customerName || user?.name || '',
+    customerEmail: formData.customerEmail || user?.email || '',
+    customerPhone: formData.customerPhone || user?.contactNumber || '',
+    customerAddress: formData.customerAddress || user?.address || '',
+    companyName: formData.companyName || user?.companyName || '',
     customerGSTIN: formData.customerGSTIN || '',
     customerPAN: formData.customerPAN || '',
     notes: formData.notes || '',
@@ -373,6 +376,36 @@ const ReviewStep: React.FC<ReviewStepProps> = ({
                   placeholder="Any special requirements for your stall"
                 />
               </div>
+
+              {/* Terms & Conditions */}
+              <div className="pt-4 border-t">
+                <div className="mb-4">
+                  <h4 className="text-sm font-medium mb-3 flex items-center gap-2">
+                    <FileText className="h-4 w-4" />
+                    Terms & Conditions
+                  </h4>
+                  <div className="space-y-2 text-xs text-muted-foreground">
+                    <p>• Your booking will be submitted for admin approval</p>
+                    <p>• Payment instructions will be provided after approval</p>
+                    <p>• Booking confirmation will be sent via email</p>
+                    <p>• Cancellation policy applies as per terms</p>
+                  </div>
+                </div>
+                
+                <div className="flex items-start space-x-2">
+                  <Checkbox
+                    id="terms"
+                    checked={termsAccepted}
+                    onCheckedChange={handleTermsChange}
+                  />
+                  <Label htmlFor="terms" className="text-sm leading-relaxed cursor-pointer">
+                    I accept the terms and conditions and confirm that all information provided is accurate
+                  </Label>
+                </div>
+                {errors.terms && (
+                  <p className="text-sm text-destructive mt-1">{errors.terms}</p>
+                )}
+              </div>
             </CardContent>
           </Card>
         </div>
@@ -570,39 +603,7 @@ const ReviewStep: React.FC<ReviewStepProps> = ({
             </CardContent>
           </Card>
 
-          {/* Terms & Conditions */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <FileText className="h-5 w-5" />
-                Terms & Conditions
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3 text-sm text-muted-foreground">
-                <p>• Your booking will be submitted for admin approval</p>
-                <p>• Payment instructions will be provided after approval</p>
-                <p>• Booking confirmation will be sent via email</p>
-                <p>• Cancellation policy applies as per terms</p>
-              </div>
-              
-              <div className="mt-4">
-                <div className="flex items-start space-x-2">
-                  <Checkbox
-                    id="terms"
-                    checked={termsAccepted}
-                    onCheckedChange={handleTermsChange}
-                  />
-                  <Label htmlFor="terms" className="text-sm leading-relaxed cursor-pointer">
-                    I accept the terms and conditions and confirm that all information provided is accurate
-                  </Label>
-                </div>
-                {errors.terms && (
-                  <p className="text-sm text-destructive mt-1">{errors.terms}</p>
-                )}
-              </div>
-            </CardContent>
-          </Card>
+
         </div>
       </div>
 

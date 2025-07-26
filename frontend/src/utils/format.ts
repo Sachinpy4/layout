@@ -118,3 +118,28 @@ export function truncate(text: string, length: number): string {
   if (text.length <= length) return text;
   return text.slice(0, length) + '...';
 } 
+
+/**
+ * Create a URL-friendly slug from text
+ */
+export function createSlug(text: string): string {
+  return text
+    .toLowerCase()
+    .trim()
+    .replace(/[^\w\s-]/g, '') // Remove special characters
+    .replace(/[\s_-]+/g, '-') // Replace spaces and underscores with hyphens
+    .replace(/^-+|-+$/g, ''); // Remove leading/trailing hyphens
+}
+
+/**
+ * Get exhibition URL using slug if available, fallback to ID
+ */
+export function getExhibitionUrl(exhibition: { _id: string; slug?: string; name: string }): string {
+  if (exhibition.slug) {
+    return `/exhibitions/${exhibition.slug}`;
+  }
+  
+  // Fallback: create slug from name if no slug exists
+  const generatedSlug = createSlug(exhibition.name);
+  return `/exhibitions/${generatedSlug}`;
+} 

@@ -29,6 +29,29 @@ export class LayoutService {
     @InjectModel(Exhibition.name) private exhibitionModel: Model<ExhibitionDocument>,
   ) {}
 
+  // Helper method to resolve exhibition identifier (slug or ID) to exhibition object
+  private async resolveExhibition(exhibitionIdentifier: string) {
+    // Check if it's a MongoDB ObjectId format
+    if (/^[0-9a-fA-F]{24}$/.test(exhibitionIdentifier)) {
+      // It's an ObjectId, fetch by ID
+      const exhibition = await this.exhibitionModel.findById(exhibitionIdentifier);
+      if (!exhibition) {
+        throw new NotFoundException(`Exhibition not found: ${exhibitionIdentifier}`);
+      }
+      return exhibition;
+    } else {
+      // It's likely a slug, fetch by slug
+      const exhibition = await this.exhibitionModel.findOne({ 
+        slug: exhibitionIdentifier, 
+        isDeleted: { $ne: true } 
+      });
+      if (!exhibition) {
+        throw new NotFoundException(`Exhibition not found: ${exhibitionIdentifier}`);
+      }
+      return exhibition;
+    }
+  }
+
   // Layout CRUD Operations
   async createLayout(createLayoutDto: CreateLayoutDto, userId: string): Promise<Layout> {
     // Check if exhibition exists
@@ -88,16 +111,36 @@ export class LayoutService {
     return await layout.save();
   }
 
-  async getLayoutByExhibitionId(exhibitionId: string): Promise<Layout> {
+  async getLayoutByExhibitionId(exhibitionIdentifier: string): Promise<Layout> {
+    // First, resolve the exhibition identifier (could be slug or ID) to get the actual exhibition
+    let exhibition;
+    
+    // Check if it's a MongoDB ObjectId format
+    if (/^[0-9a-fA-F]{24}$/.test(exhibitionIdentifier)) {
+      // It's an ObjectId, fetch by ID
+      exhibition = await this.exhibitionModel.findById(exhibitionIdentifier);
+    } else {
+      // It's likely a slug, fetch by slug
+      exhibition = await this.exhibitionModel.findOne({ 
+        slug: exhibitionIdentifier, 
+        isDeleted: { $ne: true } 
+      });
+    }
+
+    if (!exhibition) {
+      throw new NotFoundException(`Exhibition not found: ${exhibitionIdentifier}`);
+    }
+
+    // Now fetch the layout using the resolved exhibition ID
     const layout = await this.layoutModel
-      .findOne({ exhibitionId: new Types.ObjectId(exhibitionId), isActive: true })
+      .findOne({ exhibitionId: exhibition._id, isActive: true })
       .populate([
         { path: 'createdBy', select: 'name email' },
         { path: 'updatedBy', select: 'name email' }
       ]);
 
     if (!layout) {
-      throw new NotFoundException(`Layout not found for exhibition ${exhibitionId}`);
+      throw new NotFoundException(`Layout not found for exhibition ${exhibitionIdentifier}`);
     }
 
     // CRITICAL FIX: Transform layout to include stallType information for frontend
@@ -164,45 +207,55 @@ export class LayoutService {
     return layoutObj as Layout;
   }
 
-  async updateLayout(exhibitionId: string, updateLayoutDto: UpdateLayoutDto, userId: string): Promise<Layout> {
-    const layout = await this.layoutModel.findOne({ 
-      exhibitionId: new Types.ObjectId(exhibitionId),
-      isActive: true 
-    });
+  async updateLayout(exhibitionIdentifier: string, updateLayoutDto: UpdateLayoutDto, userId: string): Promise<Layout> {
+    try {
+      // Resolve the exhibition identifier (could be slug or ID) to get the actual exhibition
+      const exhibition = await this.resolveExhibition(exhibitionIdentifier);
 
-    if (!layout) {
-      throw new NotFoundException(`Layout not found for exhibition ${exhibitionId}`);
-    }
+      // Now find the layout using the resolved exhibition ID
+      const layout = await this.layoutModel.findOne({ 
+        exhibitionId: exhibition._id,
+        isActive: true 
+      });
 
-    // Process spaces and fixtures if provided
-    if (updateLayoutDto.spaces) {
-      layout.spaces = await this.processSpaces(updateLayoutDto.spaces);
-    }
+      if (!layout) {
+        throw new NotFoundException(`Layout not found for exhibition ${exhibitionIdentifier}`);
+      }
 
-    if (updateLayoutDto.fixtures) {
-      layout.fixtures = await this.processFixtures(updateLayoutDto.fixtures);
-    }
+      // Process spaces and fixtures if provided
+      if (updateLayoutDto.spaces) {
+        layout.spaces = await this.processSpaces(updateLayoutDto.spaces);
+      }
 
-    // Update only the fields that don't overwrite processed data
-    if (updateLayoutDto.name !== undefined) {
-      layout.name = updateLayoutDto.name;
-    }
-    if (updateLayoutDto.canvas !== undefined) {
-      layout.canvas = updateLayoutDto.canvas;
-    }
-    if (updateLayoutDto.settings !== undefined) {
-      layout.settings = updateLayoutDto.settings;
-    }
-    
-    layout.updatedBy = new Types.ObjectId(userId);
-    layout.version += 1;
+      if (updateLayoutDto.fixtures) {
+        layout.fixtures = await this.processFixtures(updateLayoutDto.fixtures);
+      }
 
-    return await layout.save();
+      // Update only the fields that don't overwrite processed data
+      if (updateLayoutDto.name !== undefined) {
+        layout.name = updateLayoutDto.name;
+      }
+      if (updateLayoutDto.canvas !== undefined) {
+        layout.canvas = updateLayoutDto.canvas;
+      }
+      if (updateLayoutDto.settings !== undefined) {
+        layout.settings = updateLayoutDto.settings;
+      }
+      
+      layout.updatedBy = new Types.ObjectId(userId);
+      layout.version += 1;
+
+      return await layout.save();
+    } catch (error) {
+      console.error('Layout update failed:', error.message);
+      throw error;
+    }
   }
 
   async deleteLayout(exhibitionId: string): Promise<void> {
+    const exhibition = await this.resolveExhibition(exhibitionId);
     const result = await this.layoutModel.updateOne(
-      { exhibitionId: new Types.ObjectId(exhibitionId) },
+      { exhibitionId: exhibition._id },
       { isActive: false }
     );
 
@@ -213,8 +266,9 @@ export class LayoutService {
 
   // Space Operations
   async createSpace(exhibitionId: string, createSpaceDto: CreateSpaceDto, userId: string): Promise<Layout> {
+    const exhibition = await this.resolveExhibition(exhibitionId);
     const layout = await this.layoutModel.findOne({ 
-      exhibitionId: new Types.ObjectId(exhibitionId),
+      exhibitionId: exhibition._id,
       isActive: true 
     });
 
@@ -249,8 +303,9 @@ export class LayoutService {
   }
 
   async updateSpace(exhibitionId: string, spaceId: string, updateSpaceDto: UpdateSpaceDto, userId: string): Promise<Layout> {
+    const exhibition = await this.resolveExhibition(exhibitionId);
     const layout = await this.layoutModel.findOne({ 
-      exhibitionId: new Types.ObjectId(exhibitionId),
+      exhibitionId: exhibition._id,
       isActive: true 
     });
 
@@ -272,8 +327,9 @@ export class LayoutService {
   }
 
   async deleteSpace(exhibitionId: string, spaceId: string, userId: string): Promise<Layout> {
+    const exhibition = await this.resolveExhibition(exhibitionId);
     const layout = await this.layoutModel.findOne({ 
-      exhibitionId: new Types.ObjectId(exhibitionId),
+      exhibitionId: exhibition._id,
       isActive: true 
     });
 
@@ -295,8 +351,9 @@ export class LayoutService {
 
   // Hall Operations
   async createHall(exhibitionId: string, spaceId: string, createHallDto: CreateHallDto, userId: string): Promise<Layout> {
+    const exhibition = await this.resolveExhibition(exhibitionId);
     const layout = await this.layoutModel.findOne({ 
-      exhibitionId: new Types.ObjectId(exhibitionId),
+      exhibitionId: exhibition._id,
       isActive: true 
     });
 
@@ -337,8 +394,9 @@ export class LayoutService {
   }
 
   async updateHall(exhibitionId: string, spaceId: string, hallId: string, updateHallDto: UpdateHallDto, userId: string): Promise<Layout> {
+    const exhibition = await this.resolveExhibition(exhibitionId);
     const layout = await this.layoutModel.findOne({ 
-      exhibitionId: new Types.ObjectId(exhibitionId),
+      exhibitionId: exhibition._id,
       isActive: true 
     });
 
@@ -366,8 +424,9 @@ export class LayoutService {
   }
 
   async deleteHall(exhibitionId: string, spaceId: string, hallId: string, userId: string): Promise<Layout> {
+    const exhibition = await this.resolveExhibition(exhibitionId);
     const layout = await this.layoutModel.findOne({ 
-      exhibitionId: new Types.ObjectId(exhibitionId),
+      exhibitionId: exhibition._id,
       isActive: true 
     });
 
@@ -395,8 +454,9 @@ export class LayoutService {
 
   // Stall Operations
   async createStall(exhibitionId: string, spaceId: string, hallId: string, createStallDto: CreateStallDto, userId: string): Promise<Layout> {
+    const resolvedExhibition = await this.resolveExhibition(exhibitionId);
     const layout = await this.layoutModel.findOne({ 
-      exhibitionId: new Types.ObjectId(exhibitionId),
+      exhibitionId: resolvedExhibition._id,
       isActive: true 
     });
 
@@ -481,8 +541,9 @@ export class LayoutService {
   }
 
   async updateStall(exhibitionId: string, spaceId: string, hallId: string, stallId: string, updateStallDto: UpdateStallDto, userId: string): Promise<Layout> {
+    const exhibition = await this.resolveExhibition(exhibitionId);
     const layout = await this.layoutModel.findOne({ 
-      exhibitionId: new Types.ObjectId(exhibitionId),
+      exhibitionId: exhibition._id,
       isActive: true 
     });
 
@@ -524,8 +585,9 @@ export class LayoutService {
   }
 
   async deleteStall(exhibitionId: string, spaceId: string, hallId: string, stallId: string, userId: string): Promise<Layout> {
+    const exhibition = await this.resolveExhibition(exhibitionId);
     const layout = await this.layoutModel.findOne({ 
-      exhibitionId: new Types.ObjectId(exhibitionId),
+      exhibitionId: exhibition._id,
       isActive: true 
     });
 
@@ -551,8 +613,9 @@ export class LayoutService {
 
   // Bulk stall operations
   async bulkCreateStalls(exhibitionId: string, spaceId: string, hallId: string, bulkCreateStallsDto: BulkCreateStallsDto, userId: string): Promise<Layout> {
+    const exhibition = await this.resolveExhibition(exhibitionId);
     const layout = await this.layoutModel.findOne({ 
-      exhibitionId: new Types.ObjectId(exhibitionId),
+      exhibitionId: exhibition._id,
       isActive: true 
     });
 
@@ -584,8 +647,9 @@ export class LayoutService {
 
   // Fixture Operations
   async createFixture(exhibitionId: string, createFixtureDto: CreateFixtureDto, userId: string): Promise<Layout> {
+    const exhibition = await this.resolveExhibition(exhibitionId);
     const layout = await this.layoutModel.findOne({ 
-      exhibitionId: new Types.ObjectId(exhibitionId),
+      exhibitionId: exhibition._id,
       isActive: true 
     });
 
@@ -627,8 +691,9 @@ export class LayoutService {
   }
 
   async updateFixture(exhibitionId: string, fixtureId: string, updateFixtureDto: UpdateFixtureDto, userId: string): Promise<Layout> {
+    const exhibition = await this.resolveExhibition(exhibitionId);
     const layout = await this.layoutModel.findOne({ 
-      exhibitionId: new Types.ObjectId(exhibitionId),
+      exhibitionId: exhibition._id,
       isActive: true 
     });
 
@@ -659,8 +724,9 @@ export class LayoutService {
   }
 
   async deleteFixture(exhibitionId: string, fixtureId: string, userId: string): Promise<Layout> {
+    const exhibition = await this.resolveExhibition(exhibitionId);
     const layout = await this.layoutModel.findOne({ 
-      exhibitionId: new Types.ObjectId(exhibitionId),
+      exhibitionId: exhibition._id,
       isActive: true 
     });
 
@@ -951,8 +1017,9 @@ export class LayoutService {
 
   // Clone hall functionality
   async cloneHall(exhibitionId: string, spaceId: string, hallId: string, newName: string, userId: string): Promise<Layout> {
+    const exhibition = await this.resolveExhibition(exhibitionId);
     const layout = await this.layoutModel.findOne({ 
-      exhibitionId: new Types.ObjectId(exhibitionId),
+      exhibitionId: exhibition._id,
       isActive: true 
     });
 
@@ -984,8 +1051,9 @@ export class LayoutService {
 
   // Export layout functionality
   async exportLayout(exhibitionId: string): Promise<any> {
+    const exhibition = await this.resolveExhibition(exhibitionId);
     const layout = await this.layoutModel
-      .findOne({ exhibitionId: new Types.ObjectId(exhibitionId), isActive: true })
+      .findOne({ exhibitionId: exhibition._id, isActive: true })
       .populate([
         { path: 'createdBy', select: 'name email' },
         { path: 'updatedBy', select: 'name email' }
@@ -1007,8 +1075,9 @@ export class LayoutService {
    * This method should be called after layout creation to apply exhibition-specific rates
    */
   async updateStallRatesFromExhibition(exhibitionId: string, userId: string): Promise<Layout> {
+    const resolvedExhibition = await this.resolveExhibition(exhibitionId);
     const layout = await this.layoutModel.findOne({ 
-      exhibitionId: new Types.ObjectId(exhibitionId),
+      exhibitionId: resolvedExhibition._id,
       isActive: true 
     });
 
@@ -1016,16 +1085,16 @@ export class LayoutService {
       throw new NotFoundException(`Layout not found for exhibition ${exhibitionId}`);
     }
 
-    // Get exhibition with stallRates configuration
-    const exhibition = await this.exhibitionModel.findById(exhibitionId).populate('stallRates.stallTypeId');
-    if (!exhibition || !exhibition.stallRates) {
+    // Get exhibition with stallRates configuration  
+    const exhibitionWithRates = await this.exhibitionModel.findById(resolvedExhibition._id).populate('stallRates.stallTypeId');
+    if (!exhibitionWithRates || !exhibitionWithRates.stallRates) {
       // No custom rates defined, keep defaults
       return layout;
     }
 
     // Create a map of stallTypeId to rate for quick lookup
     const rateMap = new Map();
-    exhibition.stallRates.forEach(stallRate => {
+    exhibitionWithRates.stallRates.forEach(stallRate => {
       const stallTypeId = typeof stallRate.stallTypeId === 'object' 
         ? String(stallRate.stallTypeId._id) 
         : String(stallRate.stallTypeId);

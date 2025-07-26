@@ -22,6 +22,23 @@ interface BookingWithExhibition {
     endDate: string;
   };
   stallIds: string[];
+  calculations?: {
+    stalls: Array<{
+      stallId: string;
+      number: string;
+      baseAmount: number;
+      area: number;
+      ratePerSqm: number;
+      dimensions?: any;
+      stallType?: {
+        _id: string;
+        name: string;
+      };
+      stallTypeName?: string;
+    }>;
+    totalBaseAmount: number;
+    totalAmount: number;
+  };
   customerName: string;
   companyName: string;
   amount: number;
@@ -190,12 +207,21 @@ export default function BookingsPage() {
                     <div>
                       <p className="text-sm font-medium text-gray-500 mb-1">Stall Numbers</p>
                       <div className="flex flex-wrap gap-1">
-                        {booking.stallIds.map((stallId) => (
-                          <Badge key={stallId} variant="outline">
-                            {/* Assuming stallId is the actual stall number */}
-                            {stallId}
-                          </Badge>
-                        ))}
+                        {booking.calculations?.stalls && booking.calculations.stalls.length > 0 ? (
+                          // Use stall numbers from calculations if available
+                          booking.calculations.stalls.map((stall) => (
+                            <Badge key={stall.stallId} variant="outline">
+                              {stall.number}
+                            </Badge>
+                          ))
+                        ) : (
+                          // Fallback to stallIds if calculations not available
+                          booking.stallIds.map((stallId, index) => (
+                            <Badge key={stallId} variant="outline">
+                              Stall {index + 1}
+                            </Badge>
+                          ))
+                        )}
                       </div>
                     </div>
 

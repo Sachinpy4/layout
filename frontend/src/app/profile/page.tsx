@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/auth.context';
 import { Header } from '@/components/layout/Header';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -10,13 +10,15 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
-import { User, Building2, Mail, Phone, MapPin, Calendar, Save, Edit } from 'lucide-react';
+import { User, Building2, Mail, Phone, MapPin, Calendar, Save, Edit, Globe, CreditCard } from 'lucide-react';
+import { ExhibitorService, UpdateProfileData } from '@/services/exhibitor.service';
 
 export default function ProfilePage() {
-  const { user, isAuthenticated } = useAuth();
+  const { user, isAuthenticated, setUser } = useAuth();
   const { toast } = useToast();
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [errors, setErrors] = useState<Record<string, string>>({});
   
   const [formData, setFormData] = useState({
     name: user?.name || '',
@@ -24,7 +26,32 @@ export default function ProfilePage() {
     email: user?.email || '',
     contactNumber: user?.contactNumber || '',
     address: user?.address || '',
+    city: user?.city || '',
+    state: user?.state || '',
+    pinCode: user?.pinCode || '',
+    website: user?.website || '',
+    panNumber: user?.panNumber || '',
+    gstNumber: user?.gstNumber || '',
   });
+
+  // Update form data when user changes
+  useEffect(() => {
+    if (user) {
+      setFormData({
+        name: user.name || '',
+        companyName: user.companyName || '',
+        email: user.email || '',
+        contactNumber: user.contactNumber || '',
+        address: user.address || '',
+        city: user.city || '',
+        state: user.state || '',
+        pinCode: user.pinCode || '',
+        website: user.website || '',
+        panNumber: user.panNumber || '',
+        gstNumber: user.gstNumber || '',
+      });
+    }
+  }, [user]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -32,23 +59,97 @@ export default function ProfilePage() {
       ...prev,
       [name]: value
     }));
+    
+    // Clear error for this field
+    if (errors[name]) {
+      setErrors(prev => ({
+        ...prev,
+        [name]: ''
+      }));
+    }
+  };
+
+  const validateForm = (): boolean => {
+    const newErrors: Record<string, string> = {};
+
+    // Required fields validation
+    if (!formData.name.trim()) {
+      newErrors.name = 'Full name is required';
+    }
+    if (!formData.companyName.trim()) {
+      newErrors.companyName = 'Company name is required';
+    }
+    if (!formData.contactNumber.trim()) {
+      newErrors.contactNumber = 'Contact number is required';
+    }
+
+    // Format validations
+    if (formData.pinCode && !/^[0-9]{6}$/.test(formData.pinCode)) {
+      newErrors.pinCode = 'PIN code must be 6 digits';
+    }
+    if (formData.website && formData.website.trim() && !/^(https?:\/\/)?([\da-z\.-]+)\.([a-z\.]{2,6})([\/\w \.-]*)*\/?$/.test(formData.website)) {
+      newErrors.website = 'Please enter a valid website URL';
+    }
+    if (formData.panNumber && !/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(formData.panNumber.toUpperCase())) {
+      newErrors.panNumber = 'PAN number format: ABCDE1234F';
+    }
+    if (formData.gstNumber && !/^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/.test(formData.gstNumber.toUpperCase())) {
+      newErrors.gstNumber = 'Invalid GST number format';
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
   };
 
   const handleSave = async () => {
+    if (!validateForm()) {
+      toast({
+        title: "Validation Error",
+        description: "Please fix the errors and try again.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setLoading(true);
     try {
-      // TODO: Implement API call to update profile
-      await new Promise(resolve => setTimeout(resolve, 1000)); // Mock API call
+      const updateData: UpdateProfileData = {
+        contactPerson: formData.name,
+        companyName: formData.companyName,
+        phone: formData.contactNumber,
+        address: formData.address,
+        city: formData.city || undefined,
+        state: formData.state || undefined,
+        pinCode: formData.pinCode || undefined,
+        website: formData.website || undefined,
+        panNumber: formData.panNumber.toUpperCase() || undefined,
+        gstNumber: formData.gstNumber.toUpperCase() || undefined,
+      };
+
+      // Remove empty fields
+      Object.keys(updateData).forEach(key => {
+        if (updateData[key as keyof UpdateProfileData] === '') {
+          delete updateData[key as keyof UpdateProfileData];
+        }
+      });
+
+      const updatedUser = await ExhibitorService.updateProfile(updateData);
+      
+      // Update user in auth context
+      if (setUser) {
+        setUser(updatedUser);
+      }
       
       toast({
         title: "Profile Updated",
         description: "Your profile has been successfully updated.",
       });
       setIsEditing(false);
-    } catch (error) {
+    } catch (error: any) {
+      console.error('Profile update error:', error);
       toast({
         title: "Update Failed",
-        description: "Failed to update profile. Please try again.",
+        description: error.message || "Failed to update profile. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -63,7 +164,14 @@ export default function ProfilePage() {
       email: user?.email || '',
       contactNumber: user?.contactNumber || '',
       address: user?.address || '',
+      city: user?.city || '',
+      state: user?.state || '',
+      pinCode: user?.pinCode || '',
+      website: user?.website || '',
+      panNumber: user?.panNumber || '',
+      gstNumber: user?.gstNumber || '',
     });
+    setErrors({});
     setIsEditing(false);
   };
 
@@ -121,6 +229,17 @@ export default function ProfilePage() {
                     <Phone className="h-4 w-4 mr-2" />
                     {user?.contactNumber || 'Not provided'}
                   </div>
+                  {user?.website && (
+                    <div className="flex items-center text-gray-600">
+                      <Globe className="h-4 w-4 mr-2" />
+                      <a href={user.website.startsWith('http') ? user.website : `https://${user.website}`} 
+                         target="_blank" 
+                         rel="noopener noreferrer" 
+                         className="text-blue-600 hover:underline text-sm">
+                        Website
+                      </a>
+                    </div>
+                  )}
                   <div className="flex items-center text-gray-600">
                     <User className="h-4 w-4 mr-2" />
                     Exhibitor Account
@@ -183,6 +302,7 @@ export default function ProfilePage() {
                         disabled={!isEditing}
                         placeholder="Enter your full name"
                       />
+                      {errors.name && <p className="text-xs text-red-500 mt-1">{errors.name}</p>}
                     </div>
                     <div>
                       <Label htmlFor="email">Email Address</Label>
@@ -207,6 +327,7 @@ export default function ProfilePage() {
                         disabled={!isEditing}
                         placeholder="Enter your contact number"
                       />
+                      {errors.contactNumber && <p className="text-xs text-red-500 mt-1">{errors.contactNumber}</p>}
                     </div>
                   </div>
                 </div>
@@ -228,18 +349,125 @@ export default function ProfilePage() {
                         disabled={!isEditing}
                         placeholder="Enter your company name"
                       />
-                    </div>
+                      {errors.companyName && <p className="text-xs text-red-500 mt-1">{errors.companyName}</p>}
+                                          </div>
+                      <div>
+                        <Label htmlFor="address">Company Address</Label>
+                        <Textarea
+                          id="address"
+                          name="address"
+                          value={formData.address}
+                          onChange={handleInputChange}
+                          disabled={!isEditing}
+                          placeholder="Enter your company address"
+                          rows={3}
+                        />
+                      </div>
+                  </div>
+                </div>
+
+                {/* Location Information */}
+                <div>
+                  <h3 className="text-lg font-medium text-gray-900 mb-4 flex items-center">
+                    <MapPin className="h-5 w-5 mr-2" />
+                    Location Details
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div>
-                      <Label htmlFor="address">Company Address</Label>
-                      <Textarea
-                        id="address"
-                        name="address"
-                        value={formData.address}
+                      <Label htmlFor="city">City</Label>
+                      <Input
+                        id="city"
+                        name="city"
+                        value={formData.city}
                         onChange={handleInputChange}
                         disabled={!isEditing}
-                        placeholder="Enter your company address"
-                        rows={3}
+                        placeholder="Enter your city"
                       />
+                      {errors.city && <p className="text-xs text-red-500 mt-1">{errors.city}</p>}
+                    </div>
+                    <div>
+                      <Label htmlFor="state">State</Label>
+                      <Input
+                        id="state"
+                        name="state"
+                        value={formData.state}
+                        onChange={handleInputChange}
+                        disabled={!isEditing}
+                        placeholder="Enter your state"
+                      />
+                      {errors.state && <p className="text-xs text-red-500 mt-1">{errors.state}</p>}
+                    </div>
+                    <div>
+                      <Label htmlFor="pinCode">PIN Code</Label>
+                      <Input
+                        id="pinCode"
+                        name="pinCode"
+                        value={formData.pinCode}
+                        onChange={handleInputChange}
+                        disabled={!isEditing}
+                        placeholder="Enter your PIN code"
+                      />
+                      {errors.pinCode && <p className="text-xs text-red-500 mt-1">{errors.pinCode}</p>}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Business Information */}
+                <div>
+                  <h3 className="text-lg font-medium text-gray-900 mb-4 flex items-center">
+                    <Globe className="h-5 w-5 mr-2" />
+                    Business Details
+                  </h3>
+                  <div className="grid grid-cols-1 gap-4">
+                    <div>
+                      <Label htmlFor="website">Website</Label>
+                      <Input
+                        id="website"
+                        name="website"
+                        value={formData.website}
+                        onChange={handleInputChange}
+                        disabled={!isEditing}
+                        placeholder="Enter your website URL"
+                      />
+                      {errors.website && <p className="text-xs text-red-500 mt-1">{errors.website}</p>}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Tax Information */}
+                <div>
+                  <h3 className="text-lg font-medium text-gray-900 mb-4 flex items-center">
+                    <CreditCard className="h-5 w-5 mr-2" />
+                    Tax Information
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="panNumber">PAN Number</Label>
+                      <Input
+                        id="panNumber"
+                        name="panNumber"
+                        value={formData.panNumber}
+                        onChange={handleInputChange}
+                        disabled={!isEditing}
+                        placeholder="Enter your PAN number (e.g., ABCDE1234F)"
+                        style={{ textTransform: 'uppercase' }}
+                      />
+                      {errors.panNumber && <p className="text-xs text-red-500 mt-1">{errors.panNumber}</p>}
+                      <p className="text-xs text-gray-500 mt-1">Format: ABCDE1234F</p>
+                    </div>
+                    <div>
+                      <Label htmlFor="gstNumber">GST Number</Label>
+                      <Input
+                        id="gstNumber"
+                        name="gstNumber"
+                        value={formData.gstNumber}
+                        onChange={handleInputChange}
+                        disabled={!isEditing}
+                        placeholder="Enter your GST number"
+                        style={{ textTransform: 'uppercase' }}
+                      />
+                      {errors.gstNumber && <p className="text-xs text-red-500 mt-1">{errors.gstNumber}</p>}
+                      <p className="text-xs text-gray-500 mt-1">15-digit GST number</p>
                     </div>
                   </div>
                 </div>

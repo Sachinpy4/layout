@@ -33,29 +33,121 @@ const ExhibitionForm: React.FC<ExhibitionFormProps> = ({
       
       // CRITICAL FIX: Get ALL form field values, not just validated fields
       // This ensures fields from all tabs are included, preventing data loss
-      const allFormValues = form.getFieldsValue(true) // true = get all fields including non-touched
+      const formValues = form.getFieldsValue(true) // true = get all fields including non-touched
       
       // Validate only required fields but include all form data
       await form.validateFields()
       
-      console.log('=== FORM SUBMISSION DEBUG ===')
-      console.log('All form values:', allFormValues)
-      console.log('stallRates in form:', allFormValues.stallRates)
-      console.log('taxConfig in form:', allFormValues.taxConfig)
-      console.log('discountConfig in form:', allFormValues.discountConfig)
-      console.log('publicDiscountConfig in form:', allFormValues.publicDiscountConfig)
+      // Create a deep copy to avoid mutating form state
+      const allFormValues = JSON.parse(JSON.stringify(formValues))
       
       // Transform date range to individual dates
-      if (allFormValues.dateRange && Array.isArray(allFormValues.dateRange)) {
-        allFormValues.startDate = allFormValues.dateRange[0]?.format('YYYY-MM-DD')
-        allFormValues.endDate = allFormValues.dateRange[1]?.format('YYYY-MM-DD')
+      if (formValues.dateRange && Array.isArray(formValues.dateRange)) {
+        allFormValues.startDate = formValues.dateRange[0]?.format('YYYY-MM-DD')
+        allFormValues.endDate = formValues.dateRange[1]?.format('YYYY-MM-DD')
         delete allFormValues.dateRange
       }
 
+      // Transform registration deadline
+      if (formValues.registrationDeadline && typeof formValues.registrationDeadline === 'object') {
+        allFormValues.registrationDeadline = formValues.registrationDeadline.format('YYYY-MM-DD')
+      }
+
+      // Pre-submission validation for large files
+      let hasLargeFiles = false;
+      let fileWarnings = [];
+
+      if (allFormValues.headerLogo && allFormValues.headerLogo.length > 2000000) {
+        hasLargeFiles = true;
+        fileWarnings.push('Header logo is very large');
+      }
+
+      if (allFormValues.sponsorLogos && Array.isArray(allFormValues.sponsorLogos)) {
+        const totalSize = allFormValues.sponsorLogos.join('').length;
+        if (totalSize > 3000000) {
+          hasLargeFiles = true;
+          fileWarnings.push('Sponsor logos combined are very large');
+        }
+      }
+
+      if (allFormValues.footerLogo && allFormValues.footerLogo.length > 1500000) {
+        hasLargeFiles = true;
+        fileWarnings.push('Footer logo is very large');
+      }
+
+      if (hasLargeFiles) {
+        message.warning({
+          content: `Large files detected: ${fileWarnings.join(', ')}. Upload may take longer...`,
+          duration: 3,
+        });
+      }
+
       await onSubmit(allFormValues)
-    } catch (error) {
-      console.error('Form validation failed:', error)
-      message.error('Please check all required fields')
+    } catch (error: any) {
+      console.error('Form submission error:', error)
+      
+      // Enhanced error message display
+      const errorMessage = error.message || 'Form validation failed';
+      
+      if (errorMessage.includes('🚨 File Upload Error')) {
+        // Special handling for file upload errors
+        message.error({
+          content: (
+            <div>
+              <div style={{ fontWeight: 'bold', marginBottom: '8px' }}>
+                File Upload Error
+              </div>
+              <div style={{ fontSize: '14px' }}>
+                Your images are too large. Please:
+                <ul style={{ margin: '8px 0', paddingLeft: '20px' }}>
+                  <li>Use images smaller than 2MB each</li>
+                  <li>Try compressing images before upload</li>
+                  <li>Upload fewer sponsor logos at once</li>
+                </ul>
+                The system compresses images automatically, but very large files may still exceed server limits.
+              </div>
+            </div>
+          ),
+          duration: 8,
+        });
+      } else if (errorMessage.includes('timeout')) {
+        message.error({
+          content: (
+            <div>
+              <div style={{ fontWeight: 'bold', marginBottom: '8px' }}>
+                Upload Timeout
+              </div>
+              <div style={{ fontSize: '14px' }}>
+                The upload took too long. This usually happens with large images. 
+                Please try uploading smaller images or check your internet connection.
+              </div>
+            </div>
+          ),
+          duration: 6,
+        });
+      } else if (errorMessage.includes('Network error')) {
+        message.error({
+          content: (
+            <div>
+              <div style={{ fontWeight: 'bold', marginBottom: '8px' }}>
+                Connection Error
+              </div>
+              <div style={{ fontSize: '14px' }}>
+                Unable to connect to server. Please check your internet connection and try again.
+              </div>
+            </div>
+          ),
+          duration: 5,
+        });
+      } else {
+        // Standard error handling
+        message.error({
+          content: errorMessage.includes('validation') 
+            ? 'Please check all required fields and try again'
+            : errorMessage,
+          duration: 5,
+        });
+      }
     } finally {
       setSubmitting(false)
     }

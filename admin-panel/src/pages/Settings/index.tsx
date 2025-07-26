@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import {
   Row,
   Col,
@@ -12,9 +12,9 @@ import {
   Space,
   Tabs,
   Divider,
-  message,
   Upload,
   Avatar,
+  App,
 } from 'antd'
 import {
   UserOutlined,
@@ -22,8 +22,9 @@ import {
   GlobalOutlined,
   UploadOutlined,
   SaveOutlined,
-  KeyOutlined,
+  PictureOutlined,
 } from '@ant-design/icons'
+import api from '../../services/api'
 
 const { Title, Text } = Typography
 const { Option } = Select
@@ -31,10 +32,47 @@ const { TabPane } = Tabs
 const { TextArea } = Input
 
 const SettingsPage: React.FC = () => {
+  const { message } = App.useApp()
   const [profileForm] = Form.useForm()
   const [securityForm] = Form.useForm()
   const [systemForm] = Form.useForm()
   const [loading, setLoading] = useState(false)
+  const [headerLogoFileList, setHeaderLogoFileList] = useState<any[]>([])
+
+  // Load system settings on component mount
+  const loadSystemSettings = async () => {
+    try {
+      const response = await api.get('/settings/system')
+      
+      if (response.data.success) {
+        const settingsData = response.data.data
+        systemForm.setFieldsValue(settingsData)
+        
+        // Handle header logo display
+        if (settingsData.headerLogo) {
+          const imageUrl = `http://localhost:3001${settingsData.headerLogo}`
+          const logoFileList = [
+            {
+              uid: '1',
+              name: 'header-logo.jpg',
+              status: 'done',
+              url: imageUrl,
+              thumbUrl: imageUrl, // Required for proper image preview
+            },
+          ]
+          setHeaderLogoFileList(logoFileList)
+        } else {
+          setHeaderLogoFileList([])
+        }
+      }
+    } catch (error: any) {
+      console.error('Failed to load system settings:', error)
+    }
+  }
+
+  useEffect(() => {
+    loadSystemSettings()
+  }, [])
 
   const handleProfileSubmit = async () => {
     try {
@@ -65,11 +103,28 @@ const SettingsPage: React.FC = () => {
   const handleSystemSubmit = async () => {
     try {
       setLoading(true)
-      await systemForm.validateFields()
-      // API call would go here
-      message.success('System settings updated successfully')
-    } catch (error) {
-      console.error('System update failed:', error)
+      const values = await systemForm.validateFields()
+      
+      // Save system settings to backend
+      const response = await api.put('/settings/system', values)
+      
+      if (response.data.success) {
+        message.success({
+          content: 'System settings updated successfully!',
+          duration: 3,
+        });
+      } else {
+        message.error({
+          content: 'Failed to update system settings',
+          duration: 3,
+        });
+      }
+    } catch (error: any) {
+      console.error('System update failed:', error);
+      message.error({
+        content: 'Failed to update system settings. Please try again.',
+        duration: 4,
+      });
     } finally {
       setLoading(false)
     }
@@ -291,7 +346,7 @@ const SettingsPage: React.FC = () => {
                           }
                           return Promise.reject(new Error('Passwords do not match!'))
                         },
-                      }),
+                      })
                     ]}
                   >
                     <Input.Password placeholder="Confirm new password" />
@@ -300,11 +355,11 @@ const SettingsPage: React.FC = () => {
                   <Form.Item>
                     <Button
                       type="primary"
-                      icon={<KeyOutlined />}
+                      icon={<SaveOutlined />}
                       loading={loading}
                       onClick={handleSecuritySubmit}
                     >
-                      Update Password
+                      Update Security
                     </Button>
                   </Form.Item>
                 </Form>
@@ -368,26 +423,126 @@ const SettingsPage: React.FC = () => {
           }
           key="system"
         >
-          <Row gutter={24}>
-            <Col xs={24} lg={12}>
-              <Card title="Application Settings">
-                <Form
-                  form={systemForm}
-                  layout="vertical"
-                  initialValues={{
-                    siteName: 'Stall Booking Admin',
-                    maintenanceMode: false,
-                    registrationEnabled: true,
-                    defaultCurrency: 'USD',
-                    dateFormat: 'MM/DD/YYYY',
-                  }}
-                >
+          <Form
+            form={systemForm}
+            layout="vertical"
+            initialValues={{
+              siteName: 'Stall Booking Admin',
+              maintenanceMode: false,
+              registrationEnabled: true,
+              defaultCurrency: 'USD',
+              dateFormat: 'MM/DD/YYYY',
+              emailNotifications: true,
+              newBookingAlerts: true,
+              paymentNotifications: true,
+              systemAlerts: true,
+            }}
+          >
+            <Row gutter={24}>
+              <Col xs={24} lg={12}>
+                <Card title="Application Settings">
                   <Form.Item
                     name="siteName"
                     label="Site Name"
                     rules={[{ required: true, message: 'Please enter site name' }]}
                   >
                     <Input placeholder="Enter site name" />
+                  </Form.Item>
+
+                  <Form.Item
+                    name="headerLogo"
+                    label="Main Header Logo"
+                    extra={
+                      <div>
+                        <Text type="secondary">Primary logo displayed in the global header</Text><br/>
+                        <Text type="secondary" style={{ fontSize: '12px' }}>
+                          • Recommended: 200x80px, JPG/PNG/WebP<br/>
+                          • Max size: 5MB<br/>
+                          • Used across the entire application
+                        </Text>
+                      </div>
+                    }
+                  >
+                    <Upload
+                      listType="picture-card"
+                      maxCount={1}
+                      fileList={headerLogoFileList}
+                      beforeUpload={(file) => {
+                        const isValidType = file.type === 'image/jpeg' || file.type === 'image/png' || file.type === 'image/webp';
+                        if (!isValidType) {
+                          message.error({
+                            content: 'Please upload only JPG, PNG, or WebP files!',
+                            duration: 3,
+                          });
+                          return false;
+                        }
+                        const isValidSize = file.size / 1024 / 1024 < 5;
+                        if (!isValidSize) {
+                          message.error({
+                            content: 'Logo must be smaller than 5MB!',
+                            duration: 3,
+                          });
+                          return false;
+                        }
+                        return false;
+                      }}
+                      onChange={async (info) => {
+                        // Update fileList state for display
+                        setHeaderLogoFileList(info.fileList);
+                        
+                        if (info.fileList.length > 0 && info.fileList[0].originFileObj) {
+                          message.loading('Uploading header logo...', 0);
+                          try {
+                            const formData = new FormData();
+                            formData.append('file', info.fileList[0].originFileObj);
+                            
+                            const response = await api.post('/upload/system/header-logo', formData, {
+                              headers: { 'Content-Type': 'multipart/form-data' },
+                            });
+                            
+                            message.destroy();
+                            systemForm.setFieldValue('headerLogo', response.data.data.filePath);
+                            
+                            // Update fileList with the uploaded image URL
+                            const imageUrl = `http://localhost:3001${response.data.data.filePath}`
+                            const uploadedFileList = [
+                              {
+                                uid: '1',
+                                name: 'header-logo.jpg',
+                                status: 'done',
+                                url: imageUrl,
+                                thumbUrl: imageUrl, // Required for proper image preview
+                              },
+                            ];
+                            setHeaderLogoFileList(uploadedFileList);
+                            
+                            message.success({
+                              content: 'Header logo uploaded successfully!',
+                              duration: 3,
+                            });
+                          } catch (error) {
+                            message.destroy();
+                            message.error({
+                              content: 'Failed to upload header logo!',
+                              duration: 3,
+                            });
+                            console.error('Upload error:', error);
+                          }
+                        } else if (info.fileList.length === 0) {
+                          // File removed
+                          systemForm.setFieldValue('headerLogo', '');
+                          setHeaderLogoFileList([]);
+                        }
+                      }}
+                      accept="image/jpeg,image/jpg,image/png,image/webp"
+                    >
+                      <div style={{ textAlign: 'center' }}>
+                        <PictureOutlined style={{ fontSize: '24px', color: '#6366f1' }} />
+                        <div style={{ marginTop: '8px', fontSize: '14px' }}>
+                          Upload Logo
+                        </div>
+                      </div>
+                    </Upload>
                   </Form.Item>
 
                   <Form.Item
@@ -440,29 +595,19 @@ const SettingsPage: React.FC = () => {
                       </Text>
                     </div>
                   </Space>
-
-                  <Form.Item style={{ marginTop: 24 }}>
-                    <Button
-                      type="primary"
-                      icon={<SaveOutlined />}
-                      loading={loading}
-                      onClick={handleSystemSubmit}
-                    >
-                      Save System Settings
-                    </Button>
-                  </Form.Item>
-                </Form>
-              </Card>
+                </Card>
             </Col>
 
             <Col xs={24} lg={12}>
               <Card title="Notification Settings">
                 <Space direction="vertical" style={{ width: '100%' }} size="large">
                   <div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                      <span>Email Notifications</span>
-                      <Switch defaultChecked={true} />
-                    </div>
+                    <Form.Item name="emailNotifications" valuePropName="checked">
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span>Email Notifications</span>
+                        <Switch />
+                      </div>
+                    </Form.Item>
                     <Text type="secondary" style={{ fontSize: 12 }}>
                       Receive notifications via email
                     </Text>
@@ -471,10 +616,12 @@ const SettingsPage: React.FC = () => {
                   <Divider />
 
                   <div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                      <span>New Booking Alerts</span>
-                      <Switch defaultChecked={true} />
-                    </div>
+                    <Form.Item name="newBookingAlerts" valuePropName="checked">
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span>New Booking Alerts</span>
+                        <Switch />
+                      </div>
+                    </Form.Item>
                     <Text type="secondary" style={{ fontSize: 12 }}>
                       Get notified when new bookings are made
                     </Text>
@@ -483,10 +630,12 @@ const SettingsPage: React.FC = () => {
                   <Divider />
 
                   <div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                      <span>Payment Notifications</span>
-                      <Switch defaultChecked={true} />
-                    </div>
+                    <Form.Item name="paymentNotifications" valuePropName="checked">
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span>Payment Notifications</span>
+                        <Switch />
+                      </div>
+                    </Form.Item>
                     <Text type="secondary" style={{ fontSize: 12 }}>
                       Get notified about payment updates
                     </Text>
@@ -495,10 +644,12 @@ const SettingsPage: React.FC = () => {
                   <Divider />
 
                   <div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                      <span>System Alerts</span>
-                      <Switch defaultChecked={true} />
-                    </div>
+                    <Form.Item name="systemAlerts" valuePropName="checked">
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span>System Alerts</span>
+                        <Switch />
+                      </div>
+                    </Form.Item>
                     <Text type="secondary" style={{ fontSize: 12 }}>
                       Receive system maintenance and error alerts
                     </Text>
@@ -507,6 +658,19 @@ const SettingsPage: React.FC = () => {
               </Card>
             </Col>
           </Row>
+
+          <div style={{ marginTop: 24, textAlign: 'center' }}>
+            <Button
+              type="primary"
+              icon={<SaveOutlined />}
+              loading={loading}
+              onClick={handleSystemSubmit}
+              size="large"
+            >
+              Save System Settings
+            </Button>
+          </div>
+        </Form>
         </TabPane>
       </Tabs>
     </div>

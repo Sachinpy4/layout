@@ -330,11 +330,12 @@ export class BookingsService {
 
     const savedBooking = await booking.save();
 
-    // Update stall statuses in layout
+    // Update stall statuses in layout based on booking source and status
+    const stallStatus = bookingSource === 'admin' ? 'booked' : 'reserved';
     await this.updateStallStatusesInLayout(
       createBookingDto.exhibitionId,
       createBookingDto.stallIds,
-      'booked'
+      stallStatus
     );
 
     return savedBooking;
@@ -442,7 +443,7 @@ export class BookingsService {
       this.bookingModel.countDocuments(filter)
     ]);
 
-    // Enhance bookings with stall dimensions
+    // Enhance bookings with stall dimensions and types
     const enhancedBookings = await Promise.all(
       bookings.map(async (booking) => {
         const enhancedBooking = booking.toObject();
@@ -450,20 +451,41 @@ export class BookingsService {
         // Debug initial booking state
         console.log('Processing booking:', booking._id, 'with', booking.stallIds.length, 'stalls');
         
-        // Get stall dimensions from layout
+        // Get stall dimensions and types from layout
         try {
-          const layout = await this.layoutModel.findOne({ 
-            exhibitionId: new Types.ObjectId(booking.exhibitionId),
-            isActive: true 
-          });
+          const [layout, stallTypes, exhibition] = await Promise.all([
+            this.layoutModel.findOne({ 
+              exhibitionId: new Types.ObjectId(booking.exhibitionId),
+              isActive: true 
+            }),
+            this.stallTypeModel.find({}).select('_id name'),
+            this.exhibitionModel.findById(booking.exhibitionId).populate('stallRates.stallTypeId')
+          ]);
           
           console.log('Layout found for exhibition', booking.exhibitionId, ':', !!layout);
           
           if (layout) {
-            const stallDimensionsMap = new Map();
+            const stallDataMap = new Map();
+            const stallTypeMap = new Map();
             let totalLayoutStalls = 0;
             
-            // Build stall dimensions map
+            // Build stall type map
+            stallTypes.forEach(stallType => {
+              stallTypeMap.set(stallType._id.toString(), stallType);
+            });
+            
+            // Create stallRate map for recalculating rates
+            const stallRateMap = new Map();
+            if (exhibition?.stallRates) {
+              exhibition.stallRates.forEach((stallRate: any) => {
+                const stallTypeIdKey = typeof stallRate.stallTypeId === 'object' && stallRate.stallTypeId._id
+                  ? stallRate.stallTypeId._id.toString()
+                  : stallRate.stallTypeId.toString();
+                stallRateMap.set(stallTypeIdKey, stallRate.rate);
+              });
+            }
+            
+            // Build stall data map with dimensions, stall type, and recalculated rates
             for (const space of layout.spaces || []) {
               for (const hall of space.halls || []) {
                 for (const stall of hall.stalls || []) {
@@ -474,71 +496,66 @@ export class BookingsService {
                     shapeType: (stall as any).shapeType || 'rectangle'
                   };
                   
-                  stallDimensionsMap.set(stall.id, dimensionsInMeters);
-                }
-              }
-            }
-            
-            console.log('Layout has', totalLayoutStalls, 'stalls, found', stallDimensionsMap.size, 'with dimensions');
-            
-            // Handle cases where calculations.stalls might not exist
-            if (enhancedBooking.calculations?.stalls && enhancedBooking.calculations.stalls.length > 0) {
-              // Add dimensions to stall calculations
-              enhancedBooking.calculations.stalls = enhancedBooking.calculations.stalls.map(stall => ({
-                ...stall,
-                dimensions: stallDimensionsMap.get(stall.stallId) || null
-              }));
-              
-              const withDimensions = enhancedBooking.calculations.stalls.filter(s => s.dimensions).length;
-              console.log('Enhanced', enhancedBooking.calculations.stalls.length, 'stalls,', withDimensions, 'with dimensions');
-            } else {
-              console.log('No stall calculations found, creating from booking stallIds');
-              // If no calculations.stalls exist, create them from booking.stallIds
-              if (booking.stallIds && booking.stallIds.length > 0) {
-                const stallCalculations = booking.stallIds.map(stallId => {
-                  const dimensions = stallDimensionsMap.get(stallId);
+                  const stallType = stallTypeMap.get(stall.stallType?.toString());
                   
-                  // Find stall details from layout
-                  let stallNumber = stallId; // fallback
-                  for (const space of layout.spaces || []) {
-                    for (const hall of space.halls || []) {
-                      for (const stall of hall.stalls || []) {
-                        if (stall.id === stallId) {
-                          stallNumber = stall.number;
-                          break;
-                        }
-                      }
+                  // Calculate correct rate per sqm
+                  const stallTypeId = stall.stallType?.toString();
+                  let ratePerSqm = 0;
+                  
+                  if (stallRateMap.has(stallTypeId)) {
+                    // Use exhibition-specific rate
+                    ratePerSqm = stallRateMap.get(stallTypeId);
+                  } else if (stallType) {
+                    // Fallback to stall type default rate
+                    const stallArea = dimensionsInMeters.width * dimensionsInMeters.height;
+                    const rate = stallType.basePrice || stallType.defaultRate || 0;
+                    const rateType = stallType.rateType || 'per_stall';
+                    
+                    if (rateType === 'per_sqm') {
+                      ratePerSqm = rate;
+                    } else if (rateType === 'per_stall' && stallArea > 0) {
+                      ratePerSqm = rate / stallArea;
+                    } else {
+                      ratePerSqm = rate;
                     }
                   }
                   
-                  return {
-                    stallId: stallId,
-                    number: stallNumber,
-                    baseAmount: 0, // Would need to calculate properly
-                    amountAfterDiscount: 0,
-                    dimensions: dimensions || null
-                  };
-                });
-                
-                if (!enhancedBooking.calculations) {
-                  enhancedBooking.calculations = {
-                    stalls: stallCalculations,
-                    totalBaseAmount: 0,
-                    totalDiscountAmount: 0,
-                    totalAmountAfterDiscount: 0,
-                    taxes: [],
-                    totalTaxAmount: 0,
-                    totalAmount: 0
-                  };
-                } else {
-                  enhancedBooking.calculations.stalls = stallCalculations;
+                  stallDataMap.set(stall.id, {
+                    dimensions: dimensionsInMeters,
+                    stallType: stallType ? { _id: stallType._id, name: stallType.name } : null,
+                    stallTypeName: stallType?.name || 'Standard Stall',
+                    ratePerSqm: Math.round(ratePerSqm * 100) / 100
+                  });
                 }
               }
             }
+            
+            console.log('Layout has', totalLayoutStalls, 'stalls, found', stallDataMap.size, 'with data');
+            
+            // Add dimensions, stall type, and corrected rates to booking
+            if (enhancedBooking.calculations?.stalls) {
+              enhancedBooking.calculations.stalls = enhancedBooking.calculations.stalls.map((stall: any) => {
+                const stallData = stallDataMap.get(stall.stallId);
+                
+                // Use recalculated rate if original is invalid (NaN, undefined, or 0)
+                const originalRate = stall.ratePerSqm;
+                const isValidRate = originalRate && !isNaN(originalRate) && originalRate > 0;
+                const finalRate = isValidRate ? originalRate : (stallData?.ratePerSqm || 0);
+                
+                return {
+                  ...stall,
+                  dimensions: stallData?.dimensions || null,
+                  stallType: stallData?.stallType || null,
+                  stallTypeName: stallData?.stallTypeName || 'Standard Stall',
+                  ratePerSqm: finalRate
+                };
+              });
+              
+              console.log('Enhanced', enhancedBooking.calculations.stalls.length, 'stalls in booking', booking._id);
+            }
           }
         } catch (error) {
-          // If we can't get dimensions, continue without them
-          console.warn(`Failed to get dimensions for booking ${booking._id}:`, error);
+          console.warn(`Failed to get stall data for booking ${booking._id}:`, error);
         }
         
         return enhancedBooking;
@@ -575,19 +592,40 @@ export class BookingsService {
       throw new NotFoundException('Booking not found');
     }
 
-    // Enhance booking with stall dimensions
+    // Enhance booking with stall dimensions and types
     const enhancedBooking = booking.toObject();
     
     try {
-      const layout = await this.layoutModel.findOne({ 
-        exhibitionId: new Types.ObjectId(booking.exhibitionId),
-        isActive: true 
-      });
+      const [layout, stallTypes, exhibition] = await Promise.all([
+        this.layoutModel.findOne({ 
+          exhibitionId: new Types.ObjectId(booking.exhibitionId),
+          isActive: true 
+        }),
+        this.stallTypeModel.find({}).select('_id name'),
+        this.exhibitionModel.findById(booking.exhibitionId).populate('stallRates.stallTypeId')
+      ]);
       
       if (layout && enhancedBooking.calculations?.stalls) {
-        const stallDimensionsMap = new Map();
+        const stallDataMap = new Map();
+        const stallTypeMap = new Map();
         
-        // Build stall dimensions map
+        // Build stall type map
+        stallTypes.forEach(stallType => {
+          stallTypeMap.set(stallType._id.toString(), stallType);
+        });
+        
+        // Create stallRate map for recalculating rates
+        const stallRateMap = new Map();
+        if (exhibition?.stallRates) {
+          exhibition.stallRates.forEach((stallRate: any) => {
+            const stallTypeIdKey = typeof stallRate.stallTypeId === 'object' && stallRate.stallTypeId._id
+              ? stallRate.stallTypeId._id.toString()
+              : stallRate.stallTypeId.toString();
+            stallRateMap.set(stallTypeIdKey, stallRate.rate);
+          });
+        }
+        
+        // Build stall data map with dimensions, stall type, and recalculated rates
         for (const space of layout.spaces || []) {
           for (const hall of space.halls || []) {
             for (const stall of hall.stalls || []) {
@@ -597,23 +635,64 @@ export class BookingsService {
                 shapeType: (stall as any).shapeType || 'rectangle'
               };
               
-              stallDimensionsMap.set(stall.id, dimensionsInMeters);
+              const stallType = stallTypeMap.get(stall.stallType?.toString());
+              
+              // Calculate correct rate per sqm
+              const stallTypeId = stall.stallType?.toString();
+              let ratePerSqm = 0;
+              
+              if (stallRateMap.has(stallTypeId)) {
+                // Use exhibition-specific rate
+                ratePerSqm = stallRateMap.get(stallTypeId);
+              } else if (stallType) {
+                // Fallback to stall type default rate
+                const stallArea = dimensionsInMeters.width * dimensionsInMeters.height;
+                const rate = stallType.basePrice || stallType.defaultRate || 0;
+                const rateType = stallType.rateType || 'per_stall';
+                
+                if (rateType === 'per_sqm') {
+                  ratePerSqm = rate;
+                } else if (rateType === 'per_stall' && stallArea > 0) {
+                  ratePerSqm = rate / stallArea;
+                } else {
+                  ratePerSqm = rate;
+                }
+              }
+              
+              stallDataMap.set(stall.id, {
+                dimensions: dimensionsInMeters,
+                stallType: stallType ? { _id: stallType._id, name: stallType.name } : null,
+                stallTypeName: stallType?.name || 'Standard Stall',
+                ratePerSqm: Math.round(ratePerSqm * 100) / 100
+              });
             }
           }
         }
         
         // Debug logging
-        console.log('Enhanced booking', booking._id, 'with dimensions for', enhancedBooking.calculations.stalls.length, 'stalls');
+        console.log('Enhanced booking', booking._id, 'with dimensions, stall types, and recalculated rates for', enhancedBooking.calculations.stalls.length, 'stalls');
         
-        // Add dimensions to stall calculations
-        enhancedBooking.calculations.stalls = enhancedBooking.calculations.stalls.map(stall => ({
-          ...stall,
-          dimensions: stallDimensionsMap.get(stall.stallId) || null
-        }));
+        // Add dimensions, stall type, and corrected rates to stall calculations
+        enhancedBooking.calculations.stalls = enhancedBooking.calculations.stalls.map((stall: any) => {
+          const stallData = stallDataMap.get(stall.stallId);
+          
+          // Use recalculated rate if original is invalid (NaN, undefined, or 0)
+          const originalRate = stall.ratePerSqm;
+          const isValidRate = originalRate && !isNaN(originalRate) && originalRate > 0;
+          const finalRate = isValidRate ? originalRate : (stallData?.ratePerSqm || 0);
+          
+          return {
+            ...stall,
+            dimensions: stallData?.dimensions || null,
+            stallType: stallData?.stallType || null,
+            stallTypeName: stallData?.stallTypeName || 'Standard Stall',
+            ratePerSqm: finalRate
+          };
+        });
       }
     } catch (error) {
-      // If we can't get dimensions, continue without them
-      console.warn(`Failed to get dimensions for booking ${booking._id}:`, error);
+      // If we can't get dimensions and stall types, continue without them
+      console.warn(`Failed to get stall data for booking ${booking._id}:`, error);
     }
 
     return enhancedBooking;
@@ -688,13 +767,19 @@ export class BookingsService {
     }
 
     if (status === 'confirmed') {
-      // Mark stalls as booked
+      // Mark stalls as booked (final status)
       const exhibitionId = booking.exhibitionId._id || booking.exhibitionId;
       await this.updateStallStatusesInLayout(
         exhibitionId.toString(),
         booking.stallIds.map(id => id.toString()),
         'booked'
       );
+    }
+
+    // Handle approved status - stalls remain reserved until confirmed
+    if (status === 'approved') {
+      // Stalls remain in 'reserved' status - no change needed
+      console.log(`Booking ${booking._id} approved - stalls remain reserved`);
     }
 
     return booking.save();
@@ -920,22 +1005,43 @@ export class BookingsService {
       this.bookingModel.countDocuments(filter)
     ]);
 
-    // Enhance bookings with stall dimensions
+    // Enhance bookings with stall dimensions and types
     const enhancedBookings = await Promise.all(
       bookings.map(async (booking) => {
         const enhancedBooking = booking.toObject();
         
-        // Get stall dimensions from layout
+        // Get stall dimensions and types from layout
         try {
-          const layout = await this.layoutModel.findOne({ 
-            exhibitionId: new Types.ObjectId(booking.exhibitionId),
-            isActive: true 
-          });
+          const [layout, stallTypes, exhibition] = await Promise.all([
+            this.layoutModel.findOne({ 
+              exhibitionId: new Types.ObjectId(booking.exhibitionId),
+              isActive: true 
+            }),
+            this.stallTypeModel.find({}).select('_id name'),
+            this.exhibitionModel.findById(booking.exhibitionId).populate('stallRates.stallTypeId')
+          ]);
           
           if (layout && enhancedBooking.calculations?.stalls) {
-            const stallDimensionsMap = new Map();
+            const stallDataMap = new Map();
+            const stallTypeMap = new Map();
             
-            // Build stall dimensions map
+            // Build stall type map
+            stallTypes.forEach(stallType => {
+              stallTypeMap.set(stallType._id.toString(), stallType);
+            });
+            
+            // Create stallRate map for recalculating rates
+            const stallRateMap = new Map();
+            if (exhibition?.stallRates) {
+              exhibition.stallRates.forEach((stallRate: any) => {
+                const stallTypeIdKey = typeof stallRate.stallTypeId === 'object' && stallRate.stallTypeId._id
+                  ? stallRate.stallTypeId._id.toString()
+                  : stallRate.stallTypeId.toString();
+                stallRateMap.set(stallTypeIdKey, stallRate.rate);
+              });
+            }
+            
+            // Build stall data map with dimensions, stall type, and recalculated rates
             for (const space of layout.spaces || []) {
               for (const hall of space.halls || []) {
                 for (const stall of hall.stalls || []) {
@@ -945,23 +1051,64 @@ export class BookingsService {
                     shapeType: (stall as any).shapeType || 'rectangle'
                   };
                   
-                  stallDimensionsMap.set(stall.id, dimensionsInMeters);
+                  const stallType = stallTypeMap.get(stall.stallType?.toString());
+                  
+                  // Calculate correct rate per sqm
+                  const stallTypeId = stall.stallType?.toString();
+                  let ratePerSqm = 0;
+                  
+                  if (stallRateMap.has(stallTypeId)) {
+                    // Use exhibition-specific rate
+                    ratePerSqm = stallRateMap.get(stallTypeId);
+                  } else if (stallType) {
+                    // Fallback to stall type default rate
+                    const stallArea = dimensionsInMeters.width * dimensionsInMeters.height;
+                    const rate = stallType.basePrice || stallType.defaultRate || 0;
+                    const rateType = stallType.rateType || 'per_stall';
+                    
+                    if (rateType === 'per_sqm') {
+                      ratePerSqm = rate;
+                    } else if (rateType === 'per_stall' && stallArea > 0) {
+                      ratePerSqm = rate / stallArea;
+                    } else {
+                      ratePerSqm = rate;
+                    }
+                  }
+                  
+                  stallDataMap.set(stall.id, {
+                    dimensions: dimensionsInMeters,
+                    stallType: stallType ? { _id: stallType._id, name: stallType.name } : null,
+                    stallTypeName: stallType?.name || 'Standard Stall',
+                    ratePerSqm: Math.round(ratePerSqm * 100) / 100
+                  });
                 }
               }
             }
             
             // Debug logging
-            console.log('Enhanced user booking', booking._id, 'with dimensions');
+            console.log('Enhanced user booking', booking._id, 'with dimensions, stall types, and recalculated rates');
             
-            // Add dimensions to stall calculations
-            enhancedBooking.calculations.stalls = enhancedBooking.calculations.stalls.map(stall => ({
-              ...stall,
-              dimensions: stallDimensionsMap.get(stall.stallId) || null
-            }));
+            // Add dimensions, stall type, and corrected rates to stall calculations
+            enhancedBooking.calculations.stalls = enhancedBooking.calculations.stalls.map((stall: any) => {
+              const stallData = stallDataMap.get(stall.stallId);
+              
+              // Use recalculated rate if original is invalid (NaN, undefined, or 0)
+              const originalRate = stall.ratePerSqm;
+              const isValidRate = originalRate && !isNaN(originalRate) && originalRate > 0;
+              const finalRate = isValidRate ? originalRate : (stallData?.ratePerSqm || 0);
+              
+              return {
+                ...stall,
+                dimensions: stallData?.dimensions || null,
+                stallType: stallData?.stallType || null,
+                stallTypeName: stallData?.stallTypeName || 'Standard Stall',
+                ratePerSqm: finalRate
+              };
+            });
           }
         } catch (error) {
-          // If we can't get dimensions, continue without them
-          console.warn(`Failed to get dimensions for booking ${booking._id}:`, error);
+          // If we can't get dimensions and stall types, continue without them
+          console.warn(`Failed to get stall data for booking ${booking._id}:`, error);
         }
         
         return enhancedBooking;

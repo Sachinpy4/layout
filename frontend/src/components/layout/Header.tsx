@@ -2,15 +2,20 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useAuth } from '../../contexts/auth.context';
 import { Button } from '../ui/button';
 import { AuthManager } from '../auth/AuthManager';
+import { useSystemSettings } from '../../hooks/useSystemSettings';
+import { SettingsService } from '../../services/settings.service';
 
 export const Header: React.FC = () => {
   const { user, isAuthenticated, logout } = useAuth();
+  const { settings, loading: settingsLoading } = useSystemSettings();
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [authModalMode, setAuthModalMode] = useState<'login' | 'register'>('login');
   const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
+  const [logoError, setLogoError] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   // Close dropdown when clicking outside
@@ -44,6 +49,10 @@ export const Header: React.FC = () => {
     setIsAuthModalOpen(false);
   };
 
+  // Get logo URL and site name
+  const logoUrl = settings?.headerLogo ? SettingsService.getImageUrl(settings.headerLogo) : null;
+  const siteName = settings?.siteName || 'ExhibitBook';
+
   return (
     <>
       <header className="bg-white shadow-sm border-b">
@@ -51,8 +60,22 @@ export const Header: React.FC = () => {
           <div className="flex justify-between items-center h-16">
             {/* Logo */}
             <div className="flex items-center">
-              <Link href={"/" as any} className="text-xl font-bold text-gray-900">
-                ExhibitBook
+              <Link href={"/" as any} className="flex items-center">
+                {!settingsLoading && logoUrl && !logoError ? (
+                  <Image
+                    src={logoUrl}
+                    alt={siteName}
+                    width={120}
+                    height={40}
+                    className="h-6 w-auto object-contain"
+                    onError={() => setLogoError(true)}
+                    priority
+                  />
+                ) : (
+                  <span className="text-xl font-bold text-gray-900">
+                    {siteName}
+                  </span>
+                )}
               </Link>
             </div>
 
@@ -65,24 +88,6 @@ export const Header: React.FC = () => {
               >
                 Exhibitions
               </Link>
-              
-              {/* Authenticated user navigation */}
-              {isAuthenticated && user?.isApproved && (
-                <>
-                  <Link 
-                    href={"/dashboard" as any}
-                    className="text-gray-600 hover:text-gray-900 px-3 py-2 text-sm font-medium"
-                  >
-                    Dashboard
-                  </Link>
-                  <Link 
-                    href={"/bookings" as any}
-                    className="text-gray-600 hover:text-gray-900 px-3 py-2 text-sm font-medium"
-                  >
-                    My Bookings
-                  </Link>
-                </>
-              )}
             </nav>
 
             {/* User Menu */}
@@ -137,16 +142,29 @@ export const Header: React.FC = () => {
                         </Link>
                         
                         {user?.isApproved && (
-                          <Link
-                            href={"/bookings" as any}
-                            className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                            onClick={() => setIsProfileDropdownOpen(false)}
-                          >
-                            <svg className="w-4 h-4 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                            </svg>
-                            My Bookings
-                          </Link>
+                          <>
+                            <Link
+                              href={"/dashboard" as any}
+                              className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                              onClick={() => setIsProfileDropdownOpen(false)}
+                            >
+                              <svg className="w-4 h-4 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2H5a2 2 0 00-2-2z" />
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="m8 5 4-4 4 4" />
+                              </svg>
+                              Dashboard
+                            </Link>
+                            <Link
+                              href={"/bookings" as any}
+                              className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                              onClick={() => setIsProfileDropdownOpen(false)}
+                            >
+                              <svg className="w-4 h-4 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                              </svg>
+                              My Bookings
+                            </Link>
+                          </>
                         )}
 
                         <hr className="my-1" />
@@ -198,24 +216,6 @@ export const Header: React.FC = () => {
             >
               Exhibitions
             </Link>
-            
-            {/* Authenticated user navigation */}
-            {isAuthenticated && user?.isApproved && (
-              <>
-                <Link 
-                  href={"/dashboard" as any}
-                  className="text-gray-600 hover:text-gray-900 block px-3 py-2 text-base font-medium"
-                >
-                  Dashboard
-                </Link>
-                <Link 
-                  href={"/bookings" as any}
-                  className="text-gray-600 hover:text-gray-900 block px-3 py-2 text-base font-medium"
-                >
-                  My Bookings
-                </Link>
-              </>
-            )}
             
             {/* Mobile Auth Buttons */}
             {!isAuthenticated && (

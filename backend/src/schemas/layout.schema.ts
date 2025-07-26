@@ -120,7 +120,7 @@ export class StallReference {
   @Prop({ 
     required: true, 
     type: String, 
-    enum: ['available', 'booked', 'blocked', 'maintenance'],
+    enum: ['available', 'reserved', 'booked', 'blocked', 'maintenance'],
     default: 'available'
   })
   status: string;

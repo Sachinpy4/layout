@@ -10,6 +10,8 @@ import { PaymentsModule } from './modules/payments/payments.module';
 import { ExhibitionsModule } from './modules/exhibitions/exhibitions.module';
 import { LayoutModule } from './modules/layout/layout.module';
 import { ExhibitorsModule } from './modules/exhibitors/exhibitors.module';
+import { UploadModule } from './modules/upload/upload.module';
+import { SettingsModule } from './modules/settings/settings.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { databaseConfig } from './config/database.config';
@@ -25,6 +27,7 @@ import { Exhibitor, ExhibitorSchema } from './schemas/exhibitor.schema';
 import { Booking, BookingSchema } from './schemas/booking.schema';
 import { Layout, LayoutSchema } from './schemas/layout.schema';
 import { FixtureType, FixtureTypeSchema } from './schemas/fixture-type.schema';
+import { SystemSettings, SystemSettingsSchema } from './schemas/system-settings.schema';
 
 @Module({
   imports: [
@@ -49,6 +52,7 @@ import { FixtureType, FixtureTypeSchema } from './schemas/fixture-type.schema';
       { name: Booking.name, schema: BookingSchema },
       { name: Layout.name, schema: LayoutSchema },
       { name: FixtureType.name, schema: FixtureTypeSchema },
+      { name: SystemSettings.name, schema: SystemSettingsSchema },
     ]),
     
     // Feature modules
@@ -61,6 +65,8 @@ import { FixtureType, FixtureTypeSchema } from './schemas/fixture-type.schema';
     PaymentsModule,
     LayoutModule,
     ExhibitorsModule,
+    UploadModule,
+    SettingsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

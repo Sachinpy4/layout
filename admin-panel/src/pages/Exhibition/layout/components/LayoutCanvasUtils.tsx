@@ -1,9 +1,6 @@
 import { useCallback, useMemo } from 'react';
 import { LayoutData, Hall, Stall } from '../types/layout-types';
 import { spatialIndex } from '../utils/SpatialIndex';
-import { lodManager, lodPerformanceMonitor } from '../utils/LevelOfDetail';
-import { batchRenderer, batchPerformanceMonitor } from '../utils/BatchRenderer';
-import { poolManager } from '../utils/ObjectPool';
 
 // Helper function to ensure stall objects have all required properties
 export const normalizeStall = (stall: any) => ({
@@ -195,10 +192,6 @@ export const useVisibleStalls = (
     // Record performance metrics
     const endTime = performance.now();
     const renderTime = endTime - startTime;
-    lodPerformanceMonitor.recordRenderTime(renderTime);
-    
-    // Update LOD manager with performance metrics
-    lodManager.updatePerformanceMetrics(renderTime);
     
     // Log performance for debugging
     if (process.env.NODE_ENV === 'development' && totalStallCount > 100) {
@@ -207,8 +200,7 @@ export const useVisibleStalls = (
         visibleStalls: allStalls.length,
         renderTime: `${renderTime.toFixed(2)}ms`,
         cullingRatio: `${((totalStallCount - allStalls.length) / totalStallCount * 100).toFixed(1)}%`,
-        usingSpatialIndex: useSpatialIndex,
-        fps: lodPerformanceMonitor.getFPS().toFixed(1)
+        usingSpatialIndex: useSpatialIndex
       });
     }
     
@@ -322,63 +314,10 @@ export class HighPerformanceController {
   }
 
   private configureOptimizations(): void {
-    // Configure LOD system based on optimization level
-    switch (this.optimizationLevel) {
-      case 'ultra':
-        lodManager.updateThresholds({
-          hidden: 0.1,
-          basic: 0.2,
-          simple: 0.5,
-          standard: 1.0,
-          detailed: 1.5,
-          full: 2.5
-        });
-        lodManager.setAdaptiveThresholds(true);
-        lodManager.setPerformanceMode(true);
-        break;
-      
-      case 'high':
-        lodManager.updateThresholds({
-          hidden: 0.08,
-          basic: 0.15,
-          simple: 0.4,
-          standard: 0.8,
-          detailed: 1.2,
-          full: 2.0
-        });
-        lodManager.setAdaptiveThresholds(true);
-        break;
-      
-      case 'medium':
-        lodManager.updateThresholds({
-          hidden: 0.05,
-          basic: 0.1,
-          simple: 0.3,
-          standard: 0.6,
-          detailed: 1.0,
-          full: 1.5
-        });
-        break;
-      
-      case 'low':
-        lodManager.updateThresholds({
-          hidden: 0.03,
-          basic: 0.05,
-          simple: 0.2,
-          standard: 0.4,
-          detailed: 0.7,
-          full: 1.0
-        });
-        break;
-    }
-
-    // Configure batch renderer
-    batchRenderer.setBatchingEnabled(this.stallCount > 100);
-    
-    // Configure object pooling
-    if (this.stallCount > 500) {
-      poolManager.startPerformanceMonitoring(10000);
-    }
+    // Simplified optimization configuration
+    // Complex LOD, batch renderer, and object pooling systems have been removed
+    // Now we only use spatial indexing for 1000+ stalls
+    console.log(`🚀 Performance optimization level: ${this.optimizationLevel}`);
   }
 
   updateStallCount(newCount: number): void {
@@ -393,66 +332,35 @@ export class HighPerformanceController {
     optimizationLevel: string;
     stallCount: number;
     spatialIndexStats: any;
-    lodSettings: any;
-    batchRendererStats: any;
-    poolStats: any;
     recommendations: string[];
   } {
     const recommendations: string[] = [];
     
-    // Analyze performance and provide recommendations
-    const fps = lodPerformanceMonitor.getFPS();
-    if (fps < 30) {
-      recommendations.push('Consider reducing LOD quality for better performance');
+    // Simplified performance analysis
+    if (this.stallCount > 1000) {
+      recommendations.push('Using spatial indexing for optimal performance with 1000+ stalls');
     }
     
-    if (this.stallCount > 1000 && this.optimizationLevel !== 'ultra') {
-      recommendations.push('Enable ultra performance mode for better handling of 1000+ stalls');
-    }
-    
-    const batchEfficiency = batchPerformanceMonitor.getAverageEfficiency();
-    if (batchEfficiency < 50) {
-      recommendations.push('Batch rendering efficiency is low - consider optimizing stall grouping');
+    if (this.stallCount > 500) {
+      recommendations.push('Consider reducing visual complexity if performance issues occur');
     }
     
     return {
       optimizationLevel: this.optimizationLevel,
       stallCount: this.stallCount,
       spatialIndexStats: spatialIndex.getStats(),
-      lodSettings: lodManager.getSettings(),
-      batchRendererStats: batchRenderer.getStats(),
-      poolStats: poolManager.getGlobalStats(),
       recommendations
     };
   }
 
   // Emergency performance mode for extreme cases
   enableEmergencyMode(): void {
-    console.warn('⚠️ Emergency Performance Mode Activated');
-    
-    // Most aggressive settings
-    lodManager.updateThresholds({
-      hidden: 0.15,
-      basic: 0.3,
-      simple: 0.6,
-      standard: 1.2,
-      detailed: 2.0,
-      full: 3.0
-    });
-    
-    lodManager.setPerformanceMode(true);
-    batchRenderer.setBatchingEnabled(true);
-    
-    // Clear caches to free memory
-    batchRenderer.clearBatches();
+    console.warn('⚠️ Emergency Performance Mode Activated - Clearing spatial index cache');
     spatialIndex.clear();
   }
 
   cleanup(): void {
-    batchRenderer.cleanup();
     spatialIndex.clear();
-    poolManager.clearAllPools();
-    poolManager.stopPerformanceMonitoring();
     this.isInitialized = false;
   }
 }

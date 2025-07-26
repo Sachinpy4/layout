@@ -51,38 +51,22 @@ export const useStageDrag = (
   const handleDragStart = useCallback((e: any) => {
     if (e.target === stageRef.current) {
       setIsDragging(true);
-      
-      // Performance optimization during drag
       if (layerRef.current) {
-        layerRef.current.hitGraphEnabled(false);
+        layerRef.current.listening(false); // Replaced hitGraphEnabled
       }
     }
   }, [setIsDragging, layerRef, stageRef]);
 
   const handleDragEnd = useCallback((e: any) => {
     if (e.target === stageRef.current) {
-      // Mark that user has manually interacted with pan/position
       setHasUserInteracted(true);
-      
-      setPosition({
-        x: e.target.x(),
-        y: e.target.y()
-      });
+      setPosition({ x: e.target.x(), y: e.target.y() });
       setIsDragging(false);
-      
-      // Re-enable hit detection
       if (layerRef.current) {
-        layerRef.current.hitGraphEnabled(true);
+        layerRef.current.listening(true); // Replaced hitGraphEnabled
       }
-      
-      // Batch redraw for performance
-      setTimeout(() => {
-        if (stageRef.current) {
-          stageRef.current.batchDraw();
-        }
-      }, 50);
     }
-  }, [setPosition, setIsDragging, setHasUserInteracted, layerRef, stageRef]);
+  }, [setIsDragging, layerRef, stageRef, setHasUserInteracted, setPosition]);
 
   return { handleDragStart, handleDragEnd };
 };

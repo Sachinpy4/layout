@@ -10,7 +10,6 @@ import {
 import { LayoutData, ViewMode } from '../types/layout-types';
 import { Exhibition } from '../../../../types/index';
 import LayoutCanvas from './LayoutCanvas';
-import LayoutControls from './LayoutControls';
 
 
 const { Title, Text } = Typography;
@@ -28,9 +27,6 @@ interface WorkspaceViewProps {
   onShowStallModal: () => void;
   onShowFixtureModal: () => void;
   onMouseDown: (e: React.MouseEvent, targetId: string, targetType: 'space' | 'hall' | 'stall' | 'fixture') => void;
-  onMouseMove: (e: React.MouseEvent) => void;
-  onMouseUp: () => void;
-  onWheel: (e: React.WheelEvent) => void;
   onEditStall: (stallId: string) => void;
   onEditHall: (hallId: string) => void;
   selectedHallForStalls?: string | null;
@@ -38,7 +34,7 @@ interface WorkspaceViewProps {
   onHallSelectForDelete?: (hallId: string | null) => void;
   onPositionUpdate: (targetId: string, targetType: 'space' | 'hall' | 'stall' | 'fixture', newX: number, newY: number) => void;
   onDragComplete: (targetId: string, targetType: 'space' | 'hall' | 'stall' | 'fixture', finalX: number, finalY: number) => Promise<void>;
-  isModalOpen?: boolean; // For optimized grid toggling
+  isModalOpen?: boolean;
 }
 
 const WorkspaceView: React.FC<WorkspaceViewProps> = ({
@@ -52,9 +48,6 @@ const WorkspaceView: React.FC<WorkspaceViewProps> = ({
   onShowStallModal,
   onShowFixtureModal,
   onMouseDown,
-  onMouseMove,
-  onMouseUp,
-  onWheel,
   onEditStall,
   onEditHall,
   selectedHallForStalls,
@@ -62,7 +55,7 @@ const WorkspaceView: React.FC<WorkspaceViewProps> = ({
   onHallSelectForDelete,
   onPositionUpdate,
   onDragComplete,
-  isModalOpen = false
+  isModalOpen
 }) => {
   const getViewTitle = () => {
     switch (viewMode) {
@@ -216,20 +209,10 @@ const WorkspaceView: React.FC<WorkspaceViewProps> = ({
           title="Layout Canvas"
           style={{ height: 'calc(100vh - 200px)', position: 'relative' }}
         >
-          {/* Layout Controls */}
-          <div style={{ position: 'absolute', top: 16, left: 16, zIndex: 10 }}>
-            <LayoutControls
-              layout={layout}
-            />
-          </div>
-
           <LayoutCanvas
             layout={layout}
             viewMode={viewMode}
             onMouseDown={onMouseDown}
-            onMouseMove={onMouseMove}
-            onMouseUp={onMouseUp}
-            onWheel={onWheel}
             onEditStall={onEditStall}
             onEditHall={onEditHall}
             onHallSelect={onHallSelect}
@@ -274,20 +257,10 @@ const WorkspaceView: React.FC<WorkspaceViewProps> = ({
               title="Layout Canvas"
               style={{ height: '100%', position: 'relative' }}
             >
-              {/* Layout Controls */}
-              <div style={{ position: 'absolute', top: 16, left: 16, zIndex: 10 }}>
-                <LayoutControls
-                  layout={layout}
-                />
-              </div>
-
               <LayoutCanvas
                 layout={layout}
                 viewMode={viewMode}
                 onMouseDown={onMouseDown}
-                onMouseMove={onMouseMove}
-                onMouseUp={onMouseUp}
-                onWheel={onWheel}
                 onEditStall={onEditStall}
                 onEditHall={onEditHall}
                 onHallSelect={onHallSelect}

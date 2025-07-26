@@ -499,12 +499,14 @@ export const useLayoutInteractions = (
 
 
   const handleCenterView = useCallback(() => {
+    // Access layout through closure but don't depend on it in deps array
+    // This prevents infinite loops while still accessing current layout state
     if (!layout?.space) return;
     
     // This will trigger the auto-fit logic in LayoutCanvas
     // by resetting user interaction flag
     setLayout({ ...layout, zoom: 1.0 });
-  }, [layout, setLayout]);
+  }, [setLayout]); // Remove layout dependency to prevent infinite loops
 
   // Add position update callbacks for LayoutCanvas drag handlers
   const handlePositionUpdate = useCallback((

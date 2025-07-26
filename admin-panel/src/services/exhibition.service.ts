@@ -147,6 +147,21 @@ class ExhibitionService {
   // Update exhibition
   async updateExhibition(id: string, data: Partial<CreateExhibitionForm>): Promise<ApiResponse<Exhibition>> {
     try {
+      console.log('=== EXHIBITION UPDATE DEBUG ===');
+      console.log('Exhibition ID:', id);
+      console.log('Update data size:', JSON.stringify(data).length, 'characters');
+      
+      // Check for large base64 images and warn
+      if (data.headerLogo && data.headerLogo.length > 1000000) { // > 1MB base64
+        console.warn('Header logo is large:', (data.headerLogo.length / 1024 / 1024).toFixed(2), 'MB');
+      }
+      if (data.sponsorLogos && Array.isArray(data.sponsorLogos)) {
+        const totalSponsorSize = data.sponsorLogos.join('').length;
+        if (totalSponsorSize > 2000000) { // > 2MB total
+          console.warn('Sponsor logos are large:', (totalSponsorSize / 1024 / 1024).toFixed(2), 'MB');
+        }
+      }
+      
       const response = await api.patch(`${this.endpoint}/${id}`, data);
       return {
         success: true,
@@ -154,7 +169,49 @@ class ExhibitionService {
         message: 'Exhibition updated successfully',
       };
     } catch (error: any) {
-      throw new Error(error.response?.data?.message || 'Failed to update exhibition');
+      console.error('=== EXHIBITION UPDATE ERROR ===');
+      console.error('Error details:', error);
+      
+      // Enhanced error handling for specific cases
+      if (error.response?.status === 413) {
+        // Payload Too Large error
+        throw new Error(
+          '🚨 File Upload Error: The images you uploaded are too large. ' +
+          'Please try:\n' +
+          '• Using smaller image files (< 2MB each)\n' +
+          '• Compressing images before upload\n' +
+          '• Uploading fewer sponsor logos at once\n' +
+          'The system automatically compresses images, but very large files may still exceed limits.'
+        );
+      } else if (error.response?.status === 400) {
+        // Bad Request - possibly malformed data
+        throw new Error(
+          'Invalid data format. Please check all fields and try again. ' +
+          'If uploading images, ensure they are in JPG, PNG, or WebP format.'
+        );
+      } else if (error.response?.status === 500) {
+        // Server error
+        throw new Error(
+          'Server error occurred while updating exhibition. ' +
+          'This might be due to large file processing. Please try again with smaller images.'
+        );
+      } else if (error.code === 'ECONNABORTED' || error.message.includes('timeout')) {
+        // Timeout error
+        throw new Error(
+          'Request timed out. This usually happens with large file uploads. ' +
+          'Please try uploading smaller images or check your internet connection.'
+        );
+      } else if (error.response?.status === 0 || !error.response) {
+        // Network error
+        throw new Error(
+          'Network error: Unable to connect to server. ' +
+          'Please check your internet connection and try again.'
+        );
+      } else {
+        // Generic error with original message
+        const originalMessage = error.response?.data?.message || error.message || 'Failed to update exhibition';
+        throw new Error(`Update failed: ${originalMessage}`);
+      }
     }
   }
 

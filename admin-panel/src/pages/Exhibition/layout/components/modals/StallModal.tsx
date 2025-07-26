@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Modal, Form, Input, InputNumber, Select, Space, Button, Card, Typography, Divider, Row, Col, Badge, App } from 'antd';
 import { ShopOutlined, DeleteOutlined } from '@ant-design/icons';
 import { LayoutData, Hall } from '../../types/layout-types';
@@ -46,8 +46,7 @@ const StallModal: React.FC<StallModalProps> = ({
   onSubmit,
   exhibitionId,
   editingStall,
-  stallModalMode = 'create',
-  onEditStall: _onEditStall,
+  stallModalMode,
   selectedHallId: propSelectedHallId,
   onDelete
 }) => {
@@ -55,12 +54,24 @@ const StallModal: React.FC<StallModalProps> = ({
   const [form] = Form.useForm();
   const [selectedHallId, setSelectedHallId] = useState<string | null>(propSelectedHallId || null);
   const [selectedHall, setSelectedHall] = useState<Hall | null>(null);
+  const [selectedStallType, setSelectedStallType] = useState<any>(null);
   const [exhibitionStallTypes, setExhibitionStallTypes] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
-  const [selectedStallType, setSelectedStallType] = useState<any>(null);
-
+  
   // Add state for real-time stall number validation feedback
   const [stallNumberStatus, setStallNumberStatus] = useState<'success' | 'warning' | 'error' | ''>('');
+  
+  // Add ref to track mounted state and prevent infinite loops
+  const isMountedRef = useRef(true);
+  const hasInitializedRef = useRef(false);
+
+  // Track mounted state
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => { 
+      isMountedRef.current = false; 
+    };
+  }, []);
 
   // Fetch exhibition stall types when modal opens
   useEffect(() => {
@@ -74,7 +85,7 @@ const StallModal: React.FC<StallModalProps> = ({
     }
   }, [visible, exhibitionId]);
 
-  // Populate form when editing a stall
+  // Populate form when editing a stall (fixed dependency array)
   useEffect(() => {
     if (visible && stallModalMode === 'edit' && editingStall) {
       console.log('=== EDIT MODE DEBUG ===');
@@ -84,13 +95,19 @@ const StallModal: React.FC<StallModalProps> = ({
       // Use stallType field from database, fallback to type for compatibility
       const stallTypeValue = editingStall.stallType || editingStall.type;
       
-      form.setFieldsValue({
-        number: editingStall.number,
-        width: editingStall.widthSqm || Math.round(editingStall.width / (layout?.pixelsPerSqm || 50) * 10) / 10,
-        height: editingStall.heightSqm || Math.round(editingStall.height / (layout?.pixelsPerSqm || 50) * 10) / 10,
-        type: stallTypeValue, // Map stallType from DB to type field in form
-        status: editingStall.status || 'available'
-      });
+      if (form) { // Add safety check
+        try {
+          form.setFieldsValue({
+            number: editingStall.number,
+            width: editingStall.widthSqm || Math.round(editingStall.width / (layout?.pixelsPerSqm || 50) * 10) / 10,
+            height: editingStall.heightSqm || Math.round(editingStall.height / (layout?.pixelsPerSqm || 50) * 10) / 10,
+            type: stallTypeValue, // Map stallType from DB to type field in form
+            status: editingStall.status || 'available'
+          });
+        } catch (error) {
+          console.error('Error setting form fields:', error);
+        }
+      }
       
       // Set selected stall type for rate display if types are loaded
       if (exhibitionStallTypes.length > 0 && stallTypeValue) {
@@ -114,42 +131,71 @@ const StallModal: React.FC<StallModalProps> = ({
       } else if (exhibitionStallTypes.length === 0) {
         console.log('Exhibition stall types not loaded yet, will retry when loaded');
       }
-      
-      setSelectedHallId(editingStall.hallId);
-    } else if (visible && stallModalMode === 'create') {
-      form.resetFields();
-      setSelectedHallId(propSelectedHallId || null);
-      setSelectedStallType(null);
-      // Clear stall number status indicators
-      setStallNumberStatus('');
-    }
-  }, [visible, stallModalMode, editingStall, form, layout, propSelectedHallId, exhibitionStallTypes]);
-
-  // Separate effect to handle stall type selection when types are loaded after modal is opened
-  useEffect(() => {
-    if (visible && stallModalMode === 'edit' && editingStall && exhibitionStallTypes.length > 0 && !selectedStallType) {
-      console.log('Delayed stall type selection for:', editingStall.stallType || editingStall.type);
-      const stallTypeValue = editingStall.stallType || editingStall.type;
-      
-      const stallType = exhibitionStallTypes.find(t => String(t.value) === String(stallTypeValue));
-      
-      if (stallType) {
-        console.log('Successfully found delayed stallType:', stallType.label);
-        setSelectedStallType(stallType);
-        // Update the form field as well
-        form.setFieldValue('type', stallType.value);
-      } else {
-        console.warn('Still could not find matching stall type, using first available');
-        const fallbackType = exhibitionStallTypes[0];
-        setSelectedStallType(fallbackType);
-        form.setFieldValue('type', fallbackType.value);
+            
+        setSelectedHallId(editingStall.hallId);
+      } else if (visible && stallModalMode === 'create') {
+        if (form) { // Add safety check
+          form.resetFields();
+        }
+        setSelectedHallId(propSelectedHallId || null);
+        setSelectedStallType(null);
+        // Clear stall number status indicators
+        setStallNumberStatus('');
       }
+  }, [visible, stallModalMode, editingStall, propSelectedHallId, exhibitionStallTypes.length, layout?.pixelsPerSqm]); // Use primitive values instead of complex objects
+
+  // Handle stall type selection when editing and types load (fixed to prevent infinite loops)
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      if (isMountedRef.current && 
+          visible && 
+          stallModalMode === 'edit' && 
+          editingStall && 
+          exhibitionStallTypes.length > 0 && 
+          !selectedStallType &&
+          !hasInitializedRef.current) {
+        
+        const stallTypeValue = editingStall.stallType || editingStall.type;
+        console.log('=== TYPE SELECTION RETRY ===');
+        console.log('Looking for stallType:', stallTypeValue);
+        console.log('Available types:', exhibitionStallTypes.map(t => ({ value: t.value, label: t.label })));
+        
+        const stallType = exhibitionStallTypes.find(t => String(t.value) === String(stallTypeValue));
+        
+        if (stallType) {
+          console.log('Found stallType on retry:', stallType.label, 'rate:', stallType.rate);
+          setSelectedStallType(stallType);
+          
+          if (form) { // Add safety check
+            form.setFieldValue('type', stallType.value);
+          }
+        } else {
+          console.warn('Still could not find matching stall type for:', stallTypeValue);
+        }
+        
+        hasInitializedRef.current = true;
+      }
+    }, 0);
+    
+    return () => clearTimeout(timeoutId);
+  }, [visible, stallModalMode, editingStall?.id, exhibitionStallTypes.length]); // Use primitive values
+
+  // Reset initialization flag when modal closes
+  useEffect(() => {
+    if (!visible) {
+      hasInitializedRef.current = false;
     }
-  }, [visible, stallModalMode, editingStall, exhibitionStallTypes, selectedStallType, form]);
-
-
+  }, [visible]);
 
   // Update selected hall when hall selection changes
+  useEffect(() => {
+    if (selectedHallId && layout?.space?.halls) {
+      const hall = layout.space.halls.find(h => h.id === selectedHallId);
+      setSelectedHall(hall || null);
+    } else {
+      setSelectedHall(null);
+    }
+  }, [selectedHallId, layout?.space?.halls]);
   useEffect(() => {
     if (selectedHallId && layout?.space?.halls) {
       const hall = layout.space.halls.find(h => h.id === selectedHallId);

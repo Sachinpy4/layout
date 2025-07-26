@@ -71,7 +71,7 @@ function BookingContent() {
     const fetchExhibition = async () => {
       try {
         setLoading(true);
-        const data = await ExhibitionService.getExhibitionById(exhibitionId);
+        const data = await ExhibitionService.getExhibition(exhibitionId); // Changed to slug-aware method
         setExhibition(data);
         
         // Set exhibition in booking context

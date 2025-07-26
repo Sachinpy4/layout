@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Button, Card, Col, Row, Spin, Typography, message } from 'antd';
 import { SaveOutlined } from '@ant-design/icons';
 import { highPerformanceController } from './components/LayoutCanvasUtils';
@@ -30,6 +30,10 @@ const ExhibitionLayout: React.FC = () => {
   const [selectedHallForStalls, setSelectedHallForStalls] = useState<string | null>(null);
   const [selectedHallIdForDelete, setSelectedHallIdForDelete] = useState<string | null>(null);
 
+  // Use refs to prevent infinite loops
+  const hasInitializedPerformanceRef = useRef(false);
+  const lastTotalStallsRef = useRef(0);
+
   // Data loading hook
   const {
     exhibition,
@@ -51,20 +55,19 @@ const ExhibitionLayout: React.FC = () => {
   // Interaction handling hook with high-performance optimizations
   const {
     handleMouseDown,
-    handleMouseMove,
-    handleMouseUp,
-    handleWheel,
-    handleCenterView,
     handlePositionUpdate,
     handleDragComplete,
     cleanup: cleanupInteractions
   } = useLayoutInteractions(layout, setLayout, autoSave);
 
-  // Initialize performance monitoring
+  // Initialize performance monitoring (fixed to prevent infinite loops)
   useEffect(() => {
     if (layout?.space?.halls) {
       const totalStalls = layout.space.halls.reduce((count, hall) => count + hall.stalls.length, 0);
-      if (totalStalls > 100) {
+      
+      // Only initialize if stall count changed significantly or first time
+      if (totalStalls > 100 && 
+          (!hasInitializedPerformanceRef.current || Math.abs(totalStalls - lastTotalStallsRef.current) > 50)) {
         console.log('🚀 High-Performance Layout System Active:', {
           totalStalls,
           halls: layout.space.halls.length,
@@ -73,9 +76,11 @@ const ExhibitionLayout: React.FC = () => {
         
         // Initialize high-performance controller
         highPerformanceController.initialize(totalStalls);
+        hasInitializedPerformanceRef.current = true;
+        lastTotalStallsRef.current = totalStalls;
       }
     }
-  }, [layout?.space?.halls]);
+  }, [layout?.space?.halls?.length]); // Use length instead of the entire array
 
   // Cleanup on unmount
   useEffect(() => {
@@ -85,15 +90,22 @@ const ExhibitionLayout: React.FC = () => {
     };
   }, [cleanupInteractions]);
 
-  // Auto-center view when any modal opens (like frontend behavior)
+  // Auto-center view when any modal opens (fixed to prevent infinite loops)
   useEffect(() => {
     const isAnyModalOpen = stallModalVisible || hallModalVisible || spaceModalVisible || fixtureModalVisible;
     
     if (isAnyModalOpen && layout?.space) {
-      // Center the view when modal opens
-      handleCenterView();
+      // Use setTimeout to break potential synchronous loops and only center if layout exists
+      const timeoutId = setTimeout(() => {
+        if (layout?.space) {
+          // Call handleCenterView directly without depending on its reference
+          setLayout(prevLayout => prevLayout ? { ...prevLayout, zoom: 1.0 } : prevLayout);
+        }
+      }, 0);
+      
+      return () => clearTimeout(timeoutId);
     }
-  }, [stallModalVisible, hallModalVisible, spaceModalVisible, fixtureModalVisible, layout?.space, handleCenterView]);
+  }, [stallModalVisible, hallModalVisible, spaceModalVisible, fixtureModalVisible, layout?.space?.id]); // Use space.id instead of entire space object
 
   // View mode handlers
   const handleViewModeChange = (mode: ViewMode) => {
@@ -727,9 +739,6 @@ const ExhibitionLayout: React.FC = () => {
           onShowStallModal={handleShowStallModal}
           onShowFixtureModal={handleShowFixtureModal}
           onMouseDown={handleMouseDown}
-          onMouseMove={handleMouseMove}
-          onMouseUp={handleMouseUp}
-          onWheel={handleWheel}
           onEditStall={handleEditStall}
           onEditHall={handleEditHall}
           selectedHallForStalls={selectedHallForStalls}

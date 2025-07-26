@@ -88,7 +88,9 @@ const StallListPage: React.FC = () => {
       dataIndex: 'status',
       key: 'status',
       render: (status: string) => {
-        const color = status === 'available' ? 'green' : status === 'booked' ? 'red' : 'orange';
+        const color = status === 'available' ? 'green' : 
+                     status === 'reserved' ? 'orange' : 
+                     status === 'booked' ? 'volcano' : 'default';
         return <Tag color={color}>{status?.toUpperCase() || 'UNKNOWN'}</Tag>;
       },
     },

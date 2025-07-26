@@ -315,7 +315,7 @@ export const renderHalls = (props: RenderProps) => {
         <Text
           text={`${hall.widthSqm || Math.round(hall.width / layout.pixelsPerSqm)}m × ${hall.heightSqm || Math.round(hall.height / layout.pixelsPerSqm)}m`}
           fontSize={10 / scale}
-          fill={isSelected ? "#1890ff" : "#666"}
+          fill="#666"
           x={hall.width / 2}
           y={35 / scale}
           align="center"
@@ -494,14 +494,13 @@ export const renderStalls = (props: RenderProps) => {
         {/* Stall number (center) */}
         <Text
           text={stall.number}
-          fontSize={Math.max(8 / scale, 10 / scale)}
+          fontSize={Math.min(stall.width, stall.height) * 0.2} // 20% of smallest stall dimension
           fill={stall.status === 'available' ? '#000' : '#fff'}
           fontStyle="bold"
           x={stall.width / 2}
           y={stall.height / 2}
-          align="center"
-          offsetX={stall.width / 4}
-          offsetY={6 / scale}
+          offsetX={stall.number.length * Math.min(stall.width, stall.height) * 0.06} // Approximate half-width of text for centering
+          offsetY={Math.min(stall.width, stall.height) * 0.1} // Proportional vertical adjustment
           listening={false}
         />
         
