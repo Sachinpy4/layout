@@ -230,7 +230,7 @@ const FooterSettingsTab: React.FC<FooterSettingsTabProps> = ({ form }) => {
         form.setFieldValue('footerLogo', undefined);
       }
     },
-    onRemove: async (file) => {
+    onRemove: async (_file) => {
       // Delete file from server if it's a file path
       const footerLogo = form.getFieldValue('footerLogo');
       if (footerLogo && footerLogo.startsWith('/uploads/')) {
