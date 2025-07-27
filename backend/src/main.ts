@@ -6,7 +6,14 @@ import { join } from 'path';
 import { AppModule } from './app.module';
 
 async function bootstrap() {
+  console.log('=== STARTING NESTJS APPLICATION ===');
+  console.log('Environment:', process.env.NODE_ENV || 'development');
+  console.log('Working directory:', process.cwd());
+  console.log('MongoDB URI:', process.env.MONGODB_URI ? 'configured' : 'using default');
+  
+  console.log('Creating NestJS application...');
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
+  console.log('NestJS application created successfully');
   
   // Configure payload size limits - INCREASE THESE VALUES
   app.use((req, res, next) => {
@@ -90,13 +97,28 @@ async function bootstrap() {
   const port = process.env.PORT || 3001;
   const host = process.env.HOSTNAME || '0.0.0.0';
   
+  console.log('Starting server...');
   await app.listen(port, host);
-  console.log(`Backend server running on http://${host}:${port}`);
-  console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
-  console.log(`CORS Origins: ${corsOrigins.join(', ')}`);
-  console.log(`MongoDB URI: ${process.env.MONGODB_URI || 'mongodb://localhost:27017/stall_booking_new'}`);
-  console.log(`Static files served from: ${join(__dirname, '..', 'uploads')}`);
-  console.log(`Upload endpoint: http://${host}:${port}/uploads/`);
+  
+  // Verify uploads directory after startup
+  const uploadsPath = join(__dirname, '..', 'uploads');
+  try {
+    const fs = require('fs');
+    const uploadsStat = fs.statSync(uploadsPath);
+    console.log(`✓ Uploads directory accessible: ${uploadsPath}`);
+    console.log(`✓ Directory permissions: ${uploadsStat.mode.toString(8)}`);
+  } catch (error) {
+    console.log(`⚠ Uploads directory issue: ${error.message}`);
+  }
+  
+  console.log(`🚀 Backend server running on http://${host}:${port}`);
+  console.log(`📋 API Documentation: http://${host}:${port}/api/docs`);
+  console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
+  console.log(`🔗 CORS Origins: ${corsOrigins.join(', ')}`);
+  console.log(`🗄️ MongoDB URI: ${process.env.MONGODB_URI || 'mongodb://localhost:27017/stall_booking_new'}`);
+  console.log(`📁 Static files served from: ${uploadsPath}`);
+  console.log(`📤 Upload endpoint: http://${host}:${port}/uploads/`);
+  console.log('=== APPLICATION STARTED SUCCESSFULLY ===');
 }
 
 bootstrap().catch(error => {
