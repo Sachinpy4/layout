@@ -215,6 +215,15 @@ export class ExhibitionsService {
   async findBySlug(slug: string): Promise<Exhibition> {
     const exhibition = await this.exhibitionModel
       .findOne({ slug, isDeleted: { $ne: true } })
+      .populate({
+        path: 'stallRates.stallTypeId',
+        model: 'StallType',
+        select: 'name description category defaultRate color',
+        options: { 
+          strictPopulate: false,  // Don't fail if reference doesn't exist
+          lean: false 
+        }
+      })
       // .populate('createdBy', 'name email') // Commented out until auth is properly implemented
       .exec();
 
@@ -222,7 +231,20 @@ export class ExhibitionsService {
       throw new NotFoundException('Exhibition not found');
     }
 
-    return exhibition;
+    // CRITICAL FIX: Transform exhibition to prevent stallTypeId object serialization issues
+    const exhibitionObj = exhibition.toObject();
+    
+    // Normalize stallRates to have both populated data AND string IDs for updates
+    if (exhibitionObj.stallRates && Array.isArray(exhibitionObj.stallRates)) {
+      exhibitionObj.stallRates = exhibitionObj.stallRates.map((rate: any) => ({
+        ...rate,
+        stallTypeId: typeof rate.stallTypeId === 'object' ? rate.stallTypeId._id : rate.stallTypeId,
+        // Keep populated data for frontend display as a separate field
+        stallType: typeof rate.stallTypeId === 'object' ? rate.stallTypeId : null
+      }));
+    }
+
+    return exhibitionObj;
   }
 
   async update(id: string, updateExhibitionDto: UpdateExhibitionDto): Promise<Exhibition> {
@@ -250,6 +272,38 @@ export class ExhibitionsService {
         updateData[key] = value;
       }
     });
+
+    // Generate new slug if name is being updated
+    if (updateData.name && updateData.name !== existingExhibition.name) {
+      let baseSlug = updateData.name
+        .toLowerCase()
+        .replace(/[^a-z0-9\s-]/g, '')
+        .replace(/\s+/g, '-')
+        .replace(/-+/g, '-')
+        .trim();
+      
+      // Handle potential slug conflicts by appending number
+      let slug = baseSlug;
+      let counter = 1;
+      
+      while (true) {
+        const conflictingExhibition = await this.exhibitionModel.findOne({ 
+          slug,
+          _id: { $ne: id }, // Exclude current exhibition
+          isDeleted: { $ne: true }
+        });
+        
+        if (!conflictingExhibition) {
+          break; // Slug is unique
+        }
+        
+        slug = `${baseSlug}-${counter}`;
+        counter++;
+      }
+      
+      updateData.slug = slug;
+      console.log('Generated new slug:', updateData.slug, 'from name:', updateData.name);
+    }
 
     console.log('Processed updateData:', JSON.stringify(updateData, null, 2));
     console.log('stallRates in updateData:', updateData.stallRates);

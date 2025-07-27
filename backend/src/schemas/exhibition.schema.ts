@@ -311,14 +311,36 @@ ExhibitionSchema.index({
 });
 
 // Generate slug before saving
-ExhibitionSchema.pre('save', function (next) {
-  if (this.isModified('name') && !this.slug) {
-    this.slug = this.name
+ExhibitionSchema.pre('save', async function (next) {
+  if (this.isModified('name')) {
+    // Always regenerate slug when name changes
+    let baseSlug = this.name
       .toLowerCase()
       .replace(/[^a-z0-9\s-]/g, '')
       .replace(/\s+/g, '-')
       .replace(/-+/g, '-')
       .trim();
+    
+    // Handle potential slug conflicts by appending number
+    let slug = baseSlug;
+    let counter = 1;
+    
+    while (true) {
+      const conflictingExhibition = await (this.constructor as any).findOne({ 
+        slug,
+        _id: { $ne: this._id }, // Exclude current exhibition
+        isDeleted: { $ne: true }
+      });
+      
+      if (!conflictingExhibition) {
+        break; // Slug is unique
+      }
+      
+      slug = `${baseSlug}-${counter}`;
+      counter++;
+    }
+    
+    this.slug = slug;
   }
   next();
 });
