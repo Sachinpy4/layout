@@ -24,7 +24,7 @@ import {
   SaveOutlined,
   PictureOutlined,
 } from '@ant-design/icons'
-import api from '../../services/api'
+import api, { getAssetUrl } from '../../services/api'
 
 const { Title, Text } = Typography
 const { Option } = Select
@@ -50,7 +50,7 @@ const SettingsPage: React.FC = () => {
         
         // Handle header logo display
         if (settingsData.headerLogo) {
-          const imageUrl = `http://localhost:3001${settingsData.headerLogo}`
+          const imageUrl = getAssetUrl(settingsData.headerLogo)
           const logoFileList = [
             {
               uid: '1',
@@ -504,7 +504,7 @@ const SettingsPage: React.FC = () => {
                             systemForm.setFieldValue('headerLogo', response.data.data.filePath);
                             
                             // Update fileList with the uploaded image URL
-                            const imageUrl = `http://localhost:3001${response.data.data.filePath}`
+                            const imageUrl = getAssetUrl(response.data.data.filePath)
                             const uploadedFileList = [
                               {
                                 uid: '1',

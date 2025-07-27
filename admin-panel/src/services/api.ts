@@ -1,6 +1,22 @@
 import axios, { AxiosInstance, AxiosResponse } from 'axios';
 
 const API_BASE_URL = (import.meta as any).env?.VITE_API_BASE_URL || 'http://localhost:3001/api/v1';
+const BASE_URL = API_BASE_URL.replace('/api/v1', ''); // Remove /api/v1 to get base URL
+
+// Utility function to get asset URL
+export const getAssetUrl = (path: string): string => {
+  if (!path) return '';
+  
+  // If path already starts with http/https, return as is
+  if (path.startsWith('http://') || path.startsWith('https://')) {
+    return path;
+  }
+  
+  // Ensure path starts with /
+  const normalizedPath = path.startsWith('/') ? path : `/${path}`;
+  
+  return `${BASE_URL}${normalizedPath}`;
+};
 
 // Create axios instance
 const api: AxiosInstance = axios.create({

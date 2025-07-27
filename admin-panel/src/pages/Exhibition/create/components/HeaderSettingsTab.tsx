@@ -17,7 +17,7 @@ import {
 import type { FormInstance } from 'antd/es/form'
 import type { UploadProps, UploadFile } from 'antd/es/upload/interface'
 import { useParams } from 'react-router-dom'
-import api from '../../../../services/api'
+import api, { getAssetUrl } from '../../../../services/api'
 
 const { TextArea } = Input
 const { Title, Text } = Typography
@@ -38,9 +38,8 @@ const HeaderSettingsTab: React.FC<HeaderSettingsTabProps> = ({ form }) => {
     if (!filePath) return '';
     
     if (filePath.startsWith('/uploads/')) {
-      // For file paths, use domain without /api/v1 prefix
-      const baseUrl = (import.meta as any).env?.VITE_API_BASE_URL?.replace('/api/v1', '') || 'http://localhost:3001';
-      return `${baseUrl}${filePath}`;
+      // Use centralized asset URL utility
+      return getAssetUrl(filePath);
     }
     
     // For base64 data, return as-is
