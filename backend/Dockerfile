@@ -49,6 +49,9 @@ COPY --from=builder --chown=nestjs:nodejs /app/dist ./dist
 COPY --from=builder --chown=nestjs:nodejs /app/node_modules ./node_modules
 COPY --from=builder --chown=nestjs:nodejs /app/package*.json ./
 
+# Copy templates directory for invoice generation
+COPY --from=builder --chown=nestjs:nodejs /app/templates ./templates
+
 # Create upload directories with proper permissions
 RUN mkdir -p uploads/images/exhibitions/headers \
              uploads/images/exhibitions/sponsors \
