@@ -100,12 +100,44 @@ export default function BookingConfirmationPage() {
     }
   };
 
-  const handleDownloadInvoice = () => {
-    // TODO: Implement invoice download
-    toast({
-      title: 'Coming Soon',
-      description: 'Invoice download will be available soon.',
-    });
+  const handleDownloadInvoice = async () => {
+    if (!booking || !booking.invoiceNumber) {
+      toast({
+        title: "Invoice Not Available",
+        description: 'Invoice has not been generated for this booking yet.',
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      // Download invoice as PDF
+      const blob = await bookingService.downloadInvoice(booking.id);
+      
+      // Create download link
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `invoice-${booking.invoiceNumber}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      
+      // Cleanup
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(link);
+      
+      toast({
+        title: "Success",
+        description: 'Invoice downloaded successfully.',
+      });
+    } catch (error: any) {
+      console.error('Invoice download error:', error);
+      toast({
+        title: "Download Failed",
+        description: error.message || 'Failed to download invoice.',
+        variant: "destructive"
+      });
+    }
   };
 
   if (loading) {

@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { BookingsController } from './bookings.controller';
 import { BookingsService } from './bookings.service';
+import { InvoiceService } from './invoice.service';
 import { AuthModule } from '../auth/auth.module';
 
 // Import all required schemas
@@ -27,7 +28,7 @@ import { Layout, LayoutSchema } from '../../schemas/layout.schema';
     ]),
   ],
   controllers: [BookingsController],
-  providers: [BookingsService],
-  exports: [BookingsService],
+  providers: [BookingsService, InvoiceService],
+  exports: [BookingsService, InvoiceService],
 })
 export class BookingsModule {} 

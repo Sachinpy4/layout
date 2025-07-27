@@ -304,6 +304,32 @@ class BookingService {
     
     return statusMap[status as keyof typeof statusMap] || { label: status, color: 'gray' };
   }
+
+  /**
+   * Download invoice PDF
+   */
+  async downloadInvoice(bookingId: string): Promise<Blob> {
+    try {
+      const response = await api.get(`${this.basePath}/${bookingId}/invoice`, {
+        responseType: 'blob',
+        headers: {
+          'Accept': 'application/pdf'
+        }
+      });
+      return response.data;
+    } catch (error: any) {
+      throw new Error(error.response?.data?.message || 'Failed to download invoice');
+    }
+  }
+
+  /**
+   * Get invoice preview URL (opens in new tab)
+   */
+  getInvoicePreviewUrl(bookingId: string): string {
+    // Get the base URL from the api instance or default to localhost
+    const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3001/api/v1';
+    return `${baseUrl}/bookings/${bookingId}/invoice/preview`;
+  }
 }
 
 export const bookingService = new BookingService(); 

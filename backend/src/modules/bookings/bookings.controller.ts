@@ -5,14 +5,16 @@ import {
   Body, 
   Param, 
   Put, 
-  Delete, 
+    Delete,
   Query,
   UseGuards,
   Request,
   Patch,
   HttpCode,
-  HttpStatus
+  HttpStatus,
+  Res
 } from '@nestjs/common';
+import { Response } from 'express';
 import { 
   ApiTags, 
   ApiOperation, 
@@ -33,13 +35,17 @@ import {
   BookingStatsResponseDto
 } from '../../dto/booking.dto';
 import { SuccessResponse } from '../../dto/common.dto';
+import { InvoiceService } from './invoice.service';
 
 @ApiTags('bookings')
 @Controller('bookings')
 @UseGuards(JwtAuthGuard)
 @ApiBearerAuth()
 export class BookingsController {
-  constructor(private readonly bookingsService: BookingsService) {}
+  constructor(
+    private readonly bookingsService: BookingsService,
+    private readonly invoiceService: InvoiceService
+  ) {}
 
   @Post()
   @ApiOperation({ 
@@ -346,6 +352,94 @@ export class BookingsController {
       message: 'Payment status updated successfully',
       data: booking.toObject() as BookingResponseDto
     };
+  }
+
+  @Get(':id/invoice')
+  @ApiOperation({ 
+    summary: 'Download booking invoice',
+    description: 'Generate and download PDF invoice for a booking'
+  })
+  @ApiParam({ name: 'id', description: 'Booking ID' })
+  @ApiResponse({ 
+    status: 200, 
+    description: 'Invoice PDF generated successfully',
+    content: {
+      'application/pdf': {
+        schema: {
+          type: 'string',
+          format: 'binary'
+        }
+      }
+    }
+  })
+  @ApiResponse({ status: 404, description: 'Booking not found' })
+  @ApiResponse({ status: 400, description: 'Invoice generation failed' })
+  async downloadInvoice(
+    @Param('id') id: string,
+    @Res() res: Response
+  ): Promise<void> {
+    try {
+      // Get booking details to set filename
+      const booking = await this.bookingsService.findOne(id);
+      
+      // Generate PDF
+      const pdfBuffer = await this.invoiceService.generateInvoicePDF(id);
+      
+      // Set response headers
+      const filename = `invoice-${booking.invoiceNumber || id}.pdf`;
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+      res.setHeader('Content-Length', pdfBuffer.length);
+      
+      // Send PDF
+      res.send(pdfBuffer);
+    } catch (error) {
+      throw error; // Let NestJS handle the error formatting
+    }
+  }
+
+  @Get(':id/invoice/preview')
+  @ApiOperation({ 
+    summary: 'Preview booking invoice',
+    description: 'Preview PDF invoice for a booking in browser'
+  })
+  @ApiParam({ name: 'id', description: 'Booking ID' })
+  @ApiResponse({ 
+    status: 200, 
+    description: 'Invoice PDF preview generated successfully',
+    content: {
+      'application/pdf': {
+        schema: {
+          type: 'string',
+          format: 'binary'
+        }
+      }
+    }
+  })
+  @ApiResponse({ status: 404, description: 'Booking not found' })
+  @ApiResponse({ status: 400, description: 'Invoice generation failed' })
+  async previewInvoice(
+    @Param('id') id: string,
+    @Res() res: Response
+  ): Promise<void> {
+    try {
+      // Get booking details to set filename
+      const booking = await this.bookingsService.findOne(id);
+      
+      // Generate PDF
+      const pdfBuffer = await this.invoiceService.generateInvoicePDF(id);
+      
+      // Set response headers for inline viewing
+      const filename = `invoice-${booking.invoiceNumber || id}.pdf`;
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `inline; filename="${filename}"`);
+      res.setHeader('Content-Length', pdfBuffer.length);
+      
+      // Send PDF
+      res.send(pdfBuffer);
+    } catch (error) {
+      throw error; // Let NestJS handle the error formatting
+    }
   }
 
   @Delete(':id')

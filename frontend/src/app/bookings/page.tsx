@@ -85,6 +85,47 @@ export default function BookingsPage() {
   const [bookings, setBookings] = useState<BookingWithExhibition[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // Handle invoice download
+  const handleDownloadInvoice = async (booking: any) => {
+    if (!booking.invoiceNumber) {
+      toast({
+        title: "Invoice Not Available",
+        description: 'Invoice has not been generated for this booking yet.',
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      // Download invoice as PDF
+      const blob = await bookingService.downloadInvoice(booking.id);
+      
+      // Create download link
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `invoice-${booking.invoiceNumber}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      
+      // Cleanup
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(link);
+      
+      toast({
+        title: "Success",
+        description: 'Invoice downloaded successfully.',
+      });
+    } catch (error: any) {
+      console.error('Invoice download error:', error);
+      toast({
+        title: "Download Failed",
+        description: error.message || 'Failed to download invoice.',
+        variant: "destructive"
+      });
+    }
+  };
+
   useEffect(() => {
     if (!isAuthenticated || !user?.isApproved) {
       setLoading(false);
@@ -248,7 +289,12 @@ export default function BookingsPage() {
                         </Button>
                       </Link>
                       {booking.invoiceNumber && (
-                        <Button variant="outline" size="sm" className="w-full">
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="w-full"
+                          onClick={() => handleDownloadInvoice(booking)}
+                        >
                           <FileText className="h-4 w-4 mr-2" />
                           Download Invoice
                         </Button>

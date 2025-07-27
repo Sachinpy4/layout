@@ -1,0 +1,538 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Invoice {{invoiceNumber}}</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.4;
+            color: #2c3e50;
+            background: #f8f9fa;
+            padding: 5px;
+        }
+
+        .invoice-container {
+            max-width: 210mm;
+            margin: 0 auto;
+            background: white;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        /* Header Section */
+        .invoice-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: 20px;
+            align-items: center;
+        }
+
+        .company-info h1 {
+            font-size: 28px;
+            font-weight: 700;
+            margin-bottom: 5px;
+        }
+
+        .company-info p {
+            opacity: 0.9;
+            font-size: 14px;
+        }
+
+        .invoice-meta {
+            text-align: right;
+        }
+
+        .invoice-meta h2 {
+            font-size: 24px;
+            font-weight: 300;
+            margin-bottom: 10px;
+        }
+
+        .invoice-number {
+            font-size: 18px;
+            font-weight: 600;
+            opacity: 0.9;
+        }
+
+        /* Main Content */
+        .invoice-content {
+            padding: 20px;
+        }
+
+        /* Information Grid */
+        .info-section {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 25px;
+            margin-bottom: 20px;
+        }
+
+        .info-block h3 {
+            color: #667eea;
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 15px;
+            border-bottom: 2px solid #e9ecef;
+            padding-bottom: 8px;
+        }
+
+        .info-block p {
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+
+        .info-block strong {
+            color: #2c3e50;
+            font-weight: 600;
+        }
+
+        /* Exhibition Info Banner */
+        .exhibition-banner {
+            background: linear-gradient(90deg, #f1f3f4 0%, #e8f0fe 100%);
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border-left: 4px solid #667eea;
+        }
+
+        .exhibition-banner h3 {
+            color: #667eea;
+            margin-bottom: 10px;
+            font-size: 18px;
+        }
+
+        .exhibition-details {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+        }
+
+        /* Stall Summary Table */
+        .items-section {
+            margin-bottom: 20px;
+        }
+
+        .section-title {
+            color: #667eea;
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 15px;
+            padding-bottom: 8px;
+            border-bottom: 2px solid #e9ecef;
+        }
+
+        .stall-summary {
+            border: 1px solid #e9ecef;
+            border-radius: 8px;
+            overflow: hidden;
+            background: white;
+        }
+
+        .stall-header {
+            background: #667eea;
+            color: white;
+            padding: 12px 15px;
+            display: grid;
+            grid-template-columns: 0.5fr 1fr 1.5fr 1fr 1fr 1fr 1.2fr;
+            gap: 15px;
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        .stall-row {
+            padding: 12px 15px;
+            display: grid;
+            grid-template-columns: 0.5fr 1fr 1.5fr 1fr 1fr 1fr 1.2fr;
+            gap: 15px;
+            align-items: center;
+            border-bottom: 1px solid #e9ecef;
+            font-size: 14px;
+        }
+
+        .stall-row:last-child {
+            border-bottom: none;
+        }
+
+        .stall-row:nth-child(even) {
+            background: #f8f9fa;
+        }
+
+        .col-sn { text-align: center; }
+        .col-area, .col-rate, .col-amount { text-align: right; }
+
+        /* Amenities Section */
+        .amenities-section {
+            margin-bottom: 20px;
+        }
+
+        .amenities-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        .amenity-item {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 6px;
+            border-left: 3px solid #667eea;
+        }
+
+        .amenity-item h4 {
+            color: #667eea;
+            font-size: 14px;
+            margin-bottom: 5px;
+        }
+
+        .amenity-details {
+            font-size: 13px;
+            color: #6c757d;
+        }
+
+        /* Calculation Summary */
+        .calculation-summary {
+            margin-bottom: 20px;
+        }
+
+        .calc-grid {
+            border: 1px solid #e9ecef;
+            border-radius: 8px;
+            overflow: hidden;
+            background: white;
+        }
+
+        .calc-row {
+            padding: 12px 20px;
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: 20px;
+            align-items: center;
+            border-bottom: 1px solid #e9ecef;
+            font-size: 15px;
+        }
+
+        .calc-row:last-child {
+            border-bottom: none;
+        }
+
+        .calc-row:nth-child(even) {
+            background: #f8f9fa;
+        }
+
+        .calc-label {
+            font-weight: 500;
+            color: #2c3e50;
+        }
+
+        .calc-amount {
+            font-weight: 600;
+            color: #2c3e50;
+            text-align: right;
+        }
+
+        .calc-amount.discount {
+            color: #dc3545;
+        }
+
+        .total-row {
+            background: #667eea !important;
+            color: white;
+            font-weight: 700;
+        }
+
+        .total-row .calc-label,
+        .total-row .calc-amount {
+            color: white;
+            font-size: 16px;
+            font-weight: 700;
+        }
+
+        /* Payment Information */
+        .payment-info {
+            background: linear-gradient(90deg, #e8f5e8 0%, #f0f8f0 100%);
+            padding: 15px;
+            border-radius: 8px;
+            border-left: 4px solid #28a745;
+            margin-bottom: 20px;
+        }
+
+        .payment-status {
+            display: inline-block;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .status-paid { background: #d4edda; color: #155724; }
+        .status-pending { background: #fff3cd; color: #856404; }
+        .status-partial { background: #d1ecf1; color: #0c5460; }
+
+        /* Footer */
+        .invoice-footer {
+            border-top: 2px solid #e9ecef;
+            padding: 15px 20px;
+            background: #f8f9fa;
+            text-align: center;
+            font-size: 12px;
+            color: #6c757d;
+        }
+
+        .terms-section {
+            margin: 15px 0;
+            padding: 12px;
+            background: #fff3cd;
+            border-radius: 6px;
+            border-left: 4px solid #ffc107;
+        }
+
+        .terms-section h4 {
+            color: #856404;
+            margin-bottom: 10px;
+            font-size: 14px;
+        }
+
+        .terms-section p {
+            font-size: 12px;
+            color: #856404;
+            margin-bottom: 5px;
+        }
+
+        /* Responsive adjustments for PDF */
+        @media print {
+            body { padding: 0; background: white; }
+            .invoice-container { box-shadow: none; }
+        }
+
+        /* Status badges */
+        .booking-status {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .status-confirmed { background: #d4edda; color: #155724; }
+        .status-pending { background: #fff3cd; color: #856404; }
+        .status-cancelled { background: #f8d7da; color: #721c24; }
+        .status-approved { background: #d1ecf1; color: #0c5460; }
+    </style>
+</head>
+<body>
+    <div class="invoice-container">
+        <!-- Header -->
+        <div class="invoice-header">
+            <div class="company-info">
+                <h1>{{exhibition.companyName}}</h1>
+                <p>{{exhibition.companyAddress}}</p>
+                <p>Email: {{exhibition.companyEmail}} | Phone: {{exhibition.companyContactNo}}</p>
+            </div>
+            <div class="invoice-meta">
+                <h2>INVOICE</h2>
+                <div class="invoice-number">{{invoiceNumber}}</div>
+            </div>
+        </div>
+
+        <div class="invoice-content">
+            <!-- Customer & Invoice Information -->
+            <div class="info-section">
+                <div class="info-block">
+                    <h3>Bill To</h3>
+                    <p><strong>{{customerName}}</strong></p>
+                    {{#if companyName}}
+                    <p>{{companyName}}</p>
+                    {{/if}}
+                    {{#if customerAddress}}
+                    <p>{{customerAddress}}</p>
+                    {{/if}}
+                    <p>Email: {{customerEmail}}</p>
+                    {{#if customerPhone}}
+                    <p>Phone: {{customerPhone}}</p>
+                    {{/if}}
+                    {{#if customerGSTIN}}
+                    <p>GSTIN: {{customerGSTIN}}</p>
+                    {{/if}}
+                    {{#if customerPAN}}
+                    <p>PAN: {{customerPAN}}</p>
+                    {{/if}}
+                </div>
+                <div class="info-block">
+                    <h3>Invoice Details</h3>
+                    <p><strong>Invoice Date:</strong> {{formatDate invoiceGeneratedAt}}</p>
+                    <p><strong>Due Date:</strong> {{formatDate dueDate}}</p>
+                    <p><strong>Booking Status:</strong> 
+                        <span class="booking-status status-{{status}}">{{uppercase status}}</span>
+                    </p>
+                    <p><strong>Payment Status:</strong> 
+                        <span class="payment-status status-{{paymentStatus}}">{{uppercase paymentStatus}}</span>
+                    </p>
+                    {{#if bookingSource}}
+                    <p><strong>Booking Source:</strong> {{uppercase bookingSource}}</p>
+                    {{/if}}
+                </div>
+            </div>
+
+            <!-- Exhibition Information -->
+            <div class="exhibition-banner">
+                <h3>Exhibition Details</h3>
+                <div class="exhibition-details">
+                    <div>
+                        <strong>{{exhibition.name}}</strong><br>
+                        <small>{{exhibition.venue}}</small>
+                    </div>
+                    <div>
+                        <strong>Event Dates:</strong><br>
+                        <small>{{formatDateRange exhibition.startDate exhibition.endDate}}</small>
+                    </div>
+                </div>
+            </div>
+
+
+
+
+
+            <!-- Stall Summary -->
+            <div class="items-section">
+                <h3 class="section-title">Stall Summary</h3>
+
+                <div class="stall-summary">
+                    <!-- Header -->
+                    <div class="stall-header">
+                        <div class="col-sn">S/N</div>
+                        <div class="col-stall-no">Stall No.</div>
+                        <div class="col-stall-type">Stall Type</div>
+                        <div class="col-dimensions">Dimensions</div>
+                        <div class="col-area">Area (sqm)</div>
+                        <div class="col-rate">Rate (per sqm)</div>
+                        <div class="col-amount">Amount</div>
+                    </div>
+                    
+                    <!-- Stall Rows -->
+                    {{#each calculations.stalls}}
+                    <div class="stall-row">
+                        <div class="col-sn">{{add @index 1}}</div>
+                        <div class="col-stall-no">{{number}}</div>
+                        <div class="col-stall-type">{{stallTypeName}}</div>
+                        <div class="col-dimensions">{{#if dimensions}}{{dimensions.width}}m × {{dimensions.height}}m{{else}}N/A{{/if}}</div>
+                        <div class="col-area">{{#if dimensions}}{{formatNumber (multiply dimensions.width dimensions.height)}}{{else}}0.00{{/if}}</div>
+                        <div class="col-rate">{{formatNumber ratePerSqm}}</div>
+                        <div class="col-amount">{{formatNumber baseAmount}}</div>
+                    </div>
+                    {{/each}}
+                </div>
+            </div>
+
+
+
+            {{#if extraAmenities}}
+            <div class="amenities-section">
+                <h3 class="section-title">Additional Amenities</h3>
+                <div class="amenities-grid">
+                    {{#each extraAmenities}}
+                    <div class="amenity-item">
+                        <h4>{{name}} - ₹{{formatNumber amount}}</h4>
+                        <div class="amenity-details">
+                            {{#if description}}{{description}}{{/if}}
+                            {{#if quantity}} | Quantity: {{quantity}}{{/if}}
+                            {{#if perSqm}} | Per m²: {{perSqm}}{{/if}}
+                        </div>
+                    </div>
+                    {{/each}}
+                </div>
+            </div>
+            {{/if}}
+
+            <!-- Calculation Summary -->
+            <div class="calculation-summary">
+                <h3 class="section-title">Calculation Summary</h3>
+                <div class="calc-grid">
+                    <!-- Total Basic Amount -->
+                    <div class="calc-row">
+                        <div class="calc-label">Total Basic Amount</div>
+                        <div class="calc-amount">₹{{formatNumber calculations.totalBaseAmount}}</div>
+                    </div>
+                    
+                    <!-- Discount (if any) -->
+                    {{#if calculations.totalDiscountAmount}}
+                    <div class="calc-row">
+                        <div class="calc-label">Discount ({{getDiscountPercentage calculations.totalDiscountAmount calculations.totalBaseAmount}}%)</div>
+                        <div class="calc-amount discount">-₹{{formatNumber calculations.totalDiscountAmount}}</div>
+                    </div>
+                    
+                    <div class="calc-row">
+                        <div class="calc-label">Amount after Discount</div>
+                        <div class="calc-amount">₹{{formatNumber calculations.totalAmountAfterDiscount}}</div>
+                    </div>
+                    {{/if}}
+                    
+                    <!-- GST/Tax (if any) -->
+                    {{#if calculations.totalTaxAmount}}
+                    <div class="calc-row">
+                        <div class="calc-label">GST ({{getTaxPercentage calculations.taxes}}%)</div>
+                        <div class="calc-amount">₹{{formatNumber calculations.totalTaxAmount}}</div>
+                    </div>
+                    {{/if}}
+                    
+                    <!-- Total Amount -->
+                    <div class="calc-row total-row">
+                        <div class="calc-label total-label">Total Amount</div>
+                        <div class="calc-amount total-amount">₹{{formatNumber calculations.totalAmount}}</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Payment Information -->
+            {{#if paymentStatus}}
+            <div class="payment-info">
+                <h4 style="color: #28a745; margin-bottom: 10px;">Payment Information</h4>
+                <p><strong>Status:</strong> <span class="payment-status status-{{paymentStatus}}">{{uppercase paymentStatus}}</span></p>
+                <p><strong>Due Date:</strong> {{formatDate dueDate}}</p>
+                {{#if notes}}
+                <p><strong>Payment Notes:</strong> {{notes}}</p>
+                {{/if}}
+            </div>
+            {{/if}}
+
+            <!-- Special Requirements -->
+            {{#if specialRequirements}}
+            <div class="terms-section">
+                <h4>Special Requirements</h4>
+                <p>{{specialRequirements}}</p>
+            </div>
+            {{/if}}
+
+            <!-- Terms & Conditions -->
+            <div class="terms-section">
+                <h4>Terms & Conditions</h4>
+                <p>• Payment is due within 30 days of invoice date.</p>
+                <p>• All stall allocations are subject to exhibition terms and conditions.</p>
+                <p>• Cancellation charges may apply as per exhibition policy.</p>
+                <p>• Please retain this invoice for your records.</p>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="invoice-footer">
+            <p>Thank you for choosing {{exhibition.companyName}}!</p>
+            <p>For any queries regarding this invoice, please contact us at {{exhibition.companyEmail}}</p>
+            <p>Generated on {{formatDate invoiceGeneratedAt}} • Invoice #{{invoiceNumber}}</p>
+        </div>
+    </div>
+</body>
+</html> 

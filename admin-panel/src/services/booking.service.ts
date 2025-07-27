@@ -272,6 +272,27 @@ class BookingService {
       throw new Error(error.response?.data?.message || 'Failed to create booking');
     }
   }
+
+  // Download invoice PDF
+  async downloadInvoice(bookingId: string): Promise<Blob> {
+    try {
+      const response = await api.get(`${this.endpoint}/${bookingId}/invoice`, {
+        responseType: 'blob',
+        headers: {
+          'Accept': 'application/pdf'
+        }
+      });
+      return response.data;
+    } catch (error: any) {
+      throw new Error(error.response?.data?.message || 'Failed to download invoice');
+    }
+  }
+
+  // Preview invoice PDF (opens in new tab)
+  getInvoicePreviewUrl(bookingId: string): string {
+    const baseUrl = (import.meta as any).env?.VITE_API_BASE_URL || 'http://localhost:3001/api/v1';
+    return `${baseUrl}/bookings/${bookingId}/invoice/preview`;
+  }
 }
 
 const bookingService = new BookingService();

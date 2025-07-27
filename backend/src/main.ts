@@ -24,7 +24,7 @@ async function bootstrap() {
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'Origin', 'X-Requested-With'],
     credentials: true,
-    exposedHeaders: ['Content-Length', 'Content-Type'],
+    exposedHeaders: ['Content-Length', 'Content-Type', 'Content-Disposition', 'Content-Range', 'Accept-Ranges'],
   });
 
   // CRITICAL FIX: Configure body parser limits for large file uploads

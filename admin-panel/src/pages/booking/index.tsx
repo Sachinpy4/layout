@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { message, Modal, Form, Table, Card, Button, Menu, Tag, Descriptions, Select, Input } from 'antd';
-import { EyeOutlined, EditOutlined, FileTextOutlined, DeleteOutlined} from '@ant-design/icons';
+import { message, Modal, Form, Table, Card, Button, Menu, Tag, Descriptions, Select, Input, Spin } from 'antd';
+import { EyeOutlined, EditOutlined, FileTextOutlined, DeleteOutlined, LoadingOutlined} from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import dayjs from 'dayjs';
 import bookingService from '../../services/booking.service';
@@ -43,6 +43,7 @@ const BookingsPageNew: React.FC = () => {
 
   // Modal states
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
+  const [downloadingInvoice, setDownloadingInvoice] = useState<boolean>(false);
   const [viewModalVisible, setViewModalVisible] = useState(false);
   const [statusModalVisible, setStatusModalVisible] = useState(false);
   const [deleteModalVisible, setDeleteModalVisible] = useState(false);
@@ -110,6 +111,46 @@ const BookingsPageNew: React.FC = () => {
     setDeleteModalVisible(true);
   };
 
+  // Handle invoice download
+  const handleInvoiceDownload = async (booking: Booking) => {
+    try {
+      if (!booking.invoiceNumber) {
+        message.warning('Invoice not yet generated for this booking');
+        return;
+      }
+
+      setDownloadingInvoice(true);
+      
+      // Show loading message
+      const hideLoading = message.loading('Generating invoice PDF...', 0);
+
+      // Download invoice as PDF
+      const blob = await bookingService.downloadInvoice(booking._id);
+      
+      // Hide loading message
+      hideLoading();
+      
+      // Create download link
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `invoice-${booking.invoiceNumber}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      
+      // Cleanup
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(link);
+      
+      message.success('Invoice downloaded successfully');
+    } catch (error: any) {
+      console.error('Invoice download error:', error);
+      message.error(error.message || 'Failed to download invoice');
+    } finally {
+      setDownloadingInvoice(false);
+    }
+  };
+
   const handleConfirmDelete = async () => {
     if (bookingToDelete) {
       await performDeleteBooking(bookingToDelete);
@@ -142,8 +183,13 @@ const BookingsPageNew: React.FC = () => {
       <Menu.Item key="status" icon={<EditOutlined />} onClick={() => handleUpdateStatus(record)}>
         Update Status
       </Menu.Item>
-      <Menu.Item key="invoice" icon={<FileTextOutlined />}>
-        View Invoice
+      <Menu.Item 
+        key="invoice" 
+        icon={downloadingInvoice ? <Spin indicator={<LoadingOutlined style={{ fontSize: 14 }} spin />} /> : <FileTextOutlined />} 
+        onClick={() => handleInvoiceDownload(record)}
+        disabled={downloadingInvoice}
+      >
+        {downloadingInvoice ? 'Downloading...' : 'View Invoice'}
       </Menu.Item>
       <Menu.Divider />
       <Menu.Item 
