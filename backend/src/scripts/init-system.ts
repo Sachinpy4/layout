@@ -6,6 +6,7 @@ import { User } from '../schemas/user.schema';
 import { Role } from '../schemas/role.schema';
 import { StallType } from '../schemas/stall-type.schema';
 import { FixtureType } from '../schemas/fixture-type.schema';
+import { SystemSettings } from '../schemas/system-settings.schema';
 
 async function initializeSystem() {
   console.log('🚀 Initializing Stall Booking System...');
@@ -16,6 +17,7 @@ async function initializeSystem() {
   const roleModel = app.get<Model<Role>>(getModelToken(Role.name));
   const stallTypeModel = app.get<Model<StallType>>(getModelToken(StallType.name));
   const fixtureTypeModel = app.get<Model<FixtureType>>(getModelToken(FixtureType.name));
+  const systemSettingsModel = app.get<Model<SystemSettings>>(getModelToken(SystemSettings.name));
 
   try {
     // Create default roles
@@ -243,6 +245,28 @@ async function initializeSystem() {
       }
     }
 
+    // Create default system settings
+    console.log('⚙️  Creating default system settings...');
+    
+    const existingSettings = await systemSettingsModel.findOne();
+    if (!existingSettings) {
+      await systemSettingsModel.create({
+        siteName: 'ExpoTrack - Exhibition Management',
+        defaultCurrency: 'USD',
+        dateFormat: 'MM/DD/YYYY',
+        maintenanceMode: false,
+        registrationEnabled: true,
+        emailNotifications: true,
+        newBookingAlerts: true,
+        paymentNotifications: true,
+        systemAlerts: true,
+        updatedBy: adminUser._id,
+      });
+      console.log('✅ Created default system settings');
+    } else {
+      console.log('⚠️  System settings already exist');
+    }
+
     console.log('\n🎉 System initialization completed successfully!');
     console.log('\n📚 Default Login Credentials:');
     console.log('┌─────────────────────────────────────────┐');
@@ -259,6 +283,7 @@ async function initializeSystem() {
     console.log('2. Set up your environment variables');
     console.log('3. Configure MongoDB connection');
     console.log('4. Set JWT secret in production');
+    console.log('5. Customize system settings in admin panel');
 
   } catch (error) {
     console.error('❌ Error initializing system:', error);

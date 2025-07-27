@@ -1,25 +1,26 @@
-import { Injectable, BadRequestException } from '@nestjs/common';
+import { Injectable, BadRequestException, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as sharp from 'sharp';
 
-
 @Injectable()
 export class UploadService {
+  private readonly logger = new Logger(UploadService.name);
   private readonly uploadDir: string;
   private readonly baseUrl: string;
 
   constructor(private configService: ConfigService) {
     this.uploadDir = path.join(process.cwd(), 'uploads');
     this.baseUrl = this.configService.get('APP_URL', 'http://localhost:3001');
-    this.ensureUploadDirectories();
+    // Don't block startup - handle directory creation gracefully
+    this.ensureUploadDirectoriesAsync();
   }
 
   /**
-   * Ensure all required upload directories exist
+   * Ensure all required upload directories exist (async, non-blocking)
    */
-  private ensureUploadDirectories(): void {
+  private async ensureUploadDirectoriesAsync(): Promise<void> {
     const directories = [
       'images/exhibitions/headers',
       'images/exhibitions/sponsors', 
@@ -32,12 +33,34 @@ export class UploadService {
       'documents/bookings'
     ];
 
-    directories.forEach(dir => {
-      const fullPath = path.join(this.uploadDir, dir);
-      if (!fs.existsSync(fullPath)) {
-        fs.mkdirSync(fullPath, { recursive: true });
+    try {
+      for (const dir of directories) {
+        const fullPath = path.join(this.uploadDir, dir);
+        if (!fs.existsSync(fullPath)) {
+          await fs.promises.mkdir(fullPath, { recursive: true });
+          this.logger.log(`Created upload directory: ${fullPath}`);
+        }
       }
-    });
+      this.logger.log('Upload directories initialized successfully');
+    } catch (error) {
+      this.logger.warn(`Failed to create some upload directories: ${error.message}`);
+      this.logger.warn('Upload functionality may be limited until permissions are resolved');
+    }
+  }
+
+  /**
+   * Ensure a specific directory exists (on-demand creation)
+   */
+  private async ensureDirectoryExists(dirPath: string): Promise<void> {
+    try {
+      if (!fs.existsSync(dirPath)) {
+        await fs.promises.mkdir(dirPath, { recursive: true });
+        this.logger.log(`Created directory on-demand: ${dirPath}`);
+      }
+    } catch (error) {
+      this.logger.error(`Failed to create directory ${dirPath}: ${error.message}`);
+      throw new BadRequestException(`Upload directory not available: ${error.message}`);
+    }
   }
 
   /**
@@ -133,6 +156,9 @@ export class UploadService {
 
       const uploadPath = path.join(this.uploadDir, subDir);
       
+      // Ensure directory exists before writing (on-demand creation)
+      await this.ensureDirectoryExists(uploadPath);
+      
       // Determine output format and extension based on input format
       // Preserve transparency for PNG and WebP, convert others to JPEG
       const isTransparentFormat = file.mimetype === 'image/png' || file.mimetype === 'image/webp';
@@ -141,11 +167,6 @@ export class UploadService {
       
       const fileName = `${baseName}-${Date.now()}.${fileExtension}`;
       const filePath = path.join(uploadPath, fileName);
-
-      // Ensure directory exists before writing
-      if (!fs.existsSync(uploadPath)) {
-        fs.mkdirSync(uploadPath, { recursive: true });
-      }
 
       console.log('=== UPLOAD DEBUG ===');
       console.log('Upload directory:', uploadPath);
@@ -249,6 +270,9 @@ export class UploadService {
       const buffer = Buffer.from(base64, 'base64');
       
       const uploadPath = path.join(this.uploadDir, subDir);
+      
+      // Ensure directory exists before writing (on-demand creation)
+      await this.ensureDirectoryExists(uploadPath);
       
       // Determine output format based on detected/assumed format
       const isTransparentFormat = detectedMimeType === 'image/png' || detectedMimeType === 'image/webp';
