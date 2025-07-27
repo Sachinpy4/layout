@@ -1,4 +1,4 @@
-import { Injectable, BadRequestException, Logger } from '@nestjs/common';
+import { Injectable, BadRequestException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -7,37 +7,19 @@ import * as sharp from 'sharp';
 
 @Injectable()
 export class UploadService {
-  private readonly logger = new Logger(UploadService.name);
   private readonly uploadDir: string;
   private readonly baseUrl: string;
-  private directoriesInitialized = false;
 
   constructor(private configService: ConfigService) {
     this.uploadDir = path.join(process.cwd(), 'uploads');
     this.baseUrl = this.configService.get('APP_URL', 'http://localhost:3001');
-    
-    // Initialize directories asynchronously without blocking startup
-    this.initializeDirectoriesAsync();
-  }
-
-  /**
-   * Initialize upload directories asynchronously
-   */
-  private async initializeDirectoriesAsync(): Promise<void> {
-    try {
-      await this.ensureUploadDirectories();
-      this.directoriesInitialized = true;
-      this.logger.log('Upload directories initialized successfully');
-    } catch (error) {
-      this.logger.error('Failed to initialize upload directories:', error.message);
-      // Don't throw error - let the app start and handle directory creation on-demand
-    }
+    this.ensureUploadDirectories();
   }
 
   /**
    * Ensure all required upload directories exist
    */
-  private async ensureUploadDirectories(): Promise<void> {
+  private ensureUploadDirectories(): void {
     const directories = [
       'images/exhibitions/headers',
       'images/exhibitions/sponsors', 
@@ -50,33 +32,12 @@ export class UploadService {
       'documents/bookings'
     ];
 
-    for (const dir of directories) {
+    directories.forEach(dir => {
       const fullPath = path.join(this.uploadDir, dir);
-      try {
-        if (!fs.existsSync(fullPath)) {
-          fs.mkdirSync(fullPath, { recursive: true });
-          this.logger.log(`Created directory: ${fullPath}`);
-        }
-      } catch (error) {
-        this.logger.warn(`Failed to create directory ${fullPath}: ${error.message}`);
-        // Continue with other directories
+      if (!fs.existsSync(fullPath)) {
+        fs.mkdirSync(fullPath, { recursive: true });
       }
-    }
-  }
-
-  /**
-   * Ensure a specific directory exists (on-demand creation)
-   */
-  private async ensureDirectoryExists(dirPath: string): Promise<void> {
-    try {
-      if (!fs.existsSync(dirPath)) {
-        fs.mkdirSync(dirPath, { recursive: true });
-        this.logger.log(`Created directory on-demand: ${dirPath}`);
-      }
-    } catch (error) {
-      this.logger.error(`Failed to create directory ${dirPath}: ${error.message}`);
-      throw new BadRequestException(`Upload directory is not accessible: ${error.message}`);
-    }
+    });
   }
 
   /**
@@ -172,9 +133,6 @@ export class UploadService {
 
       const uploadPath = path.join(this.uploadDir, subDir);
       
-      // Ensure directory exists before writing (on-demand creation)
-      await this.ensureDirectoryExists(uploadPath);
-      
       // Determine output format and extension based on input format
       // Preserve transparency for PNG and WebP, convert others to JPEG
       const isTransparentFormat = file.mimetype === 'image/png' || file.mimetype === 'image/webp';
@@ -183,6 +141,11 @@ export class UploadService {
       
       const fileName = `${baseName}-${Date.now()}.${fileExtension}`;
       const filePath = path.join(uploadPath, fileName);
+
+      // Ensure directory exists before writing
+      if (!fs.existsSync(uploadPath)) {
+        fs.mkdirSync(uploadPath, { recursive: true });
+      }
 
       console.log('=== UPLOAD DEBUG ===');
       console.log('Upload directory:', uploadPath);
@@ -286,9 +249,6 @@ export class UploadService {
       const buffer = Buffer.from(base64, 'base64');
       
       const uploadPath = path.join(this.uploadDir, subDir);
-      
-      // Ensure directory exists before writing (on-demand creation)
-      await this.ensureDirectoryExists(uploadPath);
       
       // Determine output format based on detected/assumed format
       const isTransparentFormat = detectedMimeType === 'image/png' || detectedMimeType === 'image/webp';

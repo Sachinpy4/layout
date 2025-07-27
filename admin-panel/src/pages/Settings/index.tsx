@@ -67,24 +67,6 @@ const SettingsPage: React.FC = () => {
       }
     } catch (error: any) {
       console.error('Failed to load system settings:', error)
-      
-      // Show user-friendly error message
-      if (error.response?.status === 404) {
-        message.error({
-          content: 'Settings service is temporarily unavailable. Please try again later.',
-          duration: 5,
-        })
-      } else if (error.code === 'NETWORK_ERROR' || !error.response) {
-        message.error({
-          content: 'Unable to connect to server. Please check your connection.',
-          duration: 5,
-        })
-      } else {
-        message.error({
-          content: 'Failed to load system settings. Please refresh the page.',
-          duration: 5,
-        })
-      }
     }
   }
 

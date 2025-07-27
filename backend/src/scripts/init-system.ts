@@ -6,64 +6,9 @@ import { User } from '../schemas/user.schema';
 import { Role } from '../schemas/role.schema';
 import { StallType } from '../schemas/stall-type.schema';
 import { FixtureType } from '../schemas/fixture-type.schema';
-import * as fs from 'fs';
-import * as path from 'path';
-
-/**
- * Ensure all required upload directories exist
- */
-async function ensureUploadDirectories(): Promise<void> {
-  console.log('📁 Setting up upload directories...');
-  
-  const uploadDir = path.join(process.cwd(), 'uploads');
-  const directories = [
-    'images/exhibitions/headers',
-    'images/exhibitions/sponsors', 
-    'images/exhibitions/footers',
-    'images/users/avatars',
-    'images/exhibitors/logos',
-    'images/exhibitors/documents',
-    'images/system',
-    'documents/exhibitions',
-    'documents/bookings'
-  ];
-
-  try {
-    // Create main uploads directory
-    if (!fs.existsSync(uploadDir)) {
-      fs.mkdirSync(uploadDir, { recursive: true });
-      console.log(`✅ Created main uploads directory: ${uploadDir}`);
-    }
-
-    // Create subdirectories
-    for (const dir of directories) {
-      const fullPath = path.join(uploadDir, dir);
-      try {
-        if (!fs.existsSync(fullPath)) {
-          fs.mkdirSync(fullPath, { recursive: true });
-          console.log(`✅ Created directory: ${dir}`);
-        } else {
-          console.log(`⚠️  Directory already exists: ${dir}`);
-        }
-      } catch (error) {
-        console.log(`❌ Failed to create directory ${dir}: ${error.message}`);
-        // Continue with other directories
-      }
-    }
-
-    console.log('✅ Upload directories setup completed');
-  } catch (error) {
-    console.error('❌ Error setting up upload directories:', error.message);
-    console.log('⚠️  Upload functionality may not work properly');
-    // Don't throw error - let system initialization continue
-  }
-}
 
 async function initializeSystem() {
   console.log('🚀 Initializing Stall Booking System...');
-  
-  // First, ensure upload directories exist
-  await ensureUploadDirectories();
   
   const app = await NestFactory.createApplicationContext(AppModule);
   
@@ -314,7 +259,6 @@ async function initializeSystem() {
     console.log('2. Set up your environment variables');
     console.log('3. Configure MongoDB connection');
     console.log('4. Set JWT secret in production');
-    console.log('5. Verify upload directories have proper permissions in production');
 
   } catch (error) {
     console.error('❌ Error initializing system:', error);

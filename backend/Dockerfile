@@ -49,20 +49,6 @@ COPY --from=builder --chown=nestjs:nodejs /app/dist ./dist
 COPY --from=builder --chown=nestjs:nodejs /app/node_modules ./node_modules
 COPY --from=builder --chown=nestjs:nodejs /app/package*.json ./
 
-# Create uploads directory with proper permissions
-RUN mkdir -p /app/uploads && \
-    mkdir -p /app/uploads/images/exhibitions/headers && \
-    mkdir -p /app/uploads/images/exhibitions/sponsors && \
-    mkdir -p /app/uploads/images/exhibitions/footers && \
-    mkdir -p /app/uploads/images/users/avatars && \
-    mkdir -p /app/uploads/images/exhibitors/logos && \
-    mkdir -p /app/uploads/images/exhibitors/documents && \
-    mkdir -p /app/uploads/images/system && \
-    mkdir -p /app/uploads/documents/exhibitions && \
-    mkdir -p /app/uploads/documents/bookings && \
-    chown -R nestjs:nodejs /app/uploads && \
-    chmod -R 755 /app/uploads
-
 # Set security-focused environment variables
 ENV NODE_ENV=production \
     NODE_OPTIONS="--max-old-space-size=1024" \
