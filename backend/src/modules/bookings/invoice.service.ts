@@ -35,6 +35,15 @@ export class InvoiceService {
       // 1. Fetch booking with all populated data
       const booking = await this.getBookingWithDetails(bookingId);
       
+      if (!booking) {
+        throw new NotFoundException(`Booking with ID ${bookingId} not found`);
+      }
+
+      if (!booking.invoiceNumber) {
+        this.logger.warn(`Booking ${bookingId} does not have an invoice number, generating...`);
+        // You might want to generate an invoice number here if missing
+      }
+      
       // 2. Prepare template data
       const templateData = this.prepareTemplateData(booking);
       
@@ -44,11 +53,25 @@ export class InvoiceService {
       // 4. Generate PDF
       const pdfBuffer = await this.generatePDFFromHTML(html, booking.invoiceNumber);
       
-      this.logger.log(`Invoice PDF generated successfully for booking: ${bookingId}`);
+      this.logger.log(`Invoice PDF generated successfully for booking: ${bookingId}, size: ${pdfBuffer.length} bytes`);
       return pdfBuffer;
     } catch (error) {
-      this.logger.error(`Failed to generate invoice for booking ${bookingId}:`, error);
-      throw new Error(`Failed to generate invoice: ${error.message}`);
+      this.logger.error(`Failed to generate invoice for booking ${bookingId}:`, {
+        error: error.message,
+        stack: error.stack,
+        bookingId
+      });
+      
+      // Categorize errors for better handling
+      if (error instanceof NotFoundException) {
+        throw error;
+      } else if (error.message.includes('Chrome') || error.message.includes('Puppeteer')) {
+        throw new Error(`PDF generation service unavailable: ${error.message}`);
+      } else if (error.message.includes('template') || error.message.includes('Handlebars')) {
+        throw new Error(`Invoice template error: ${error.message}`);
+      } else {
+        throw new Error(`Failed to generate invoice: ${error.message}`);
+      }
     }
   }
 
@@ -56,28 +79,63 @@ export class InvoiceService {
    * Get booking with all related data populated and enhanced with stall details
    */
   private async getBookingWithDetails(bookingId: string): Promise<any> {
-    const booking = await this.bookingModel
-      .findById(bookingId)
-      .populate({
-        path: 'exhibitionId',
-        select: 'name venue startDate endDate companyName companyAddress companyEmail companyContactNo invoicePrefix'
-      })
-      .populate({
-        path: 'userId',
-        select: 'name email'
-      })
-      .populate({
-        path: 'exhibitorId',
-        select: 'companyName contactPerson email phone address'
-      })
-      .exec();
+    try {
+      const booking = await this.bookingModel
+        .findById(bookingId)
+        .populate({
+          path: 'exhibitionId',
+          select: 'name venue startDate endDate companyName companyAddress companyEmail companyContactNo invoicePrefix'
+        })
+        .populate({
+          path: 'userId',
+          select: 'name email'
+        })
+        .populate({
+          path: 'exhibitorId',
+          select: 'companyName contactPerson email phone address'
+        })
+        .lean() // Use lean() to get plain objects and avoid validation issues
+        .exec();
 
-    if (!booking) {
-      throw new NotFoundException(`Booking with ID ${bookingId} not found`);
+      if (!booking) {
+        throw new NotFoundException(`Booking with ID ${bookingId} not found`);
+      }
+
+      // Sanitize phone numbers to prevent validation issues during template processing
+      if (booking.customerPhone) {
+        booking.customerPhone = this.sanitizePhoneNumber(booking.customerPhone);
+      }
+      
+      if (booking.exhibitorId && typeof booking.exhibitorId === 'object' && 'phone' in booking.exhibitorId && booking.exhibitorId.phone) {
+        booking.exhibitorId.phone = this.sanitizePhoneNumber(booking.exhibitorId.phone as string);
+      }
+
+      // Enhance booking with stall details (same logic as BookingsService.findOne)
+      return await this.enhanceBookingWithStallDetails(booking);
+    } catch (error) {
+      this.logger.error(`Error fetching booking details for invoice:`, {
+        bookingId,
+        error: error.message
+      });
+      throw error;
     }
+  }
 
-    // Enhance booking with stall details (same logic as BookingsService.findOne)
-    return await this.enhanceBookingWithStallDetails(booking);
+  /**
+   * Sanitize phone number for display purposes
+   */
+  private sanitizePhoneNumber(phone: string): string {
+    if (!phone) return '';
+    
+    // Remove any non-digit characters except +
+    const cleaned = phone.replace(/[^\d+]/g, '');
+    
+    // Ensure it's a valid format for display
+    if (cleaned.length >= 10) {
+      return cleaned;
+    }
+    
+    return phone; // Return original if we can't clean it properly
   }
 
   /**
@@ -166,7 +224,10 @@ export class InvoiceService {
    * Enhance booking with stall details from layout (same logic as BookingsService.findOne)
    */
   private async enhanceBookingWithStallDetails(booking: any): Promise<any> {
-    const enhancedBooking = booking.toObject();
+    // Handle both Mongoose documents and plain objects (from lean() queries)
+    const enhancedBooking = typeof booking.toObject === 'function' 
+      ? booking.toObject() 
+      : { ...booking }; // Clone the plain object
     
     try {
       // Extract exhibition ID - it might be populated or just an ObjectId
@@ -341,19 +402,48 @@ export class InvoiceService {
    */
   private async getBrowser(): Promise<Browser> {
     if (!InvoiceService.browserInstance || !InvoiceService.browserInstance.connected) {
-      InvoiceService.browserInstance = await puppeteer.launch({
-        headless: 'new',
-        args: [
-          '--no-sandbox',
-          '--disable-setuid-sandbox',
-          '--disable-dev-shm-usage',
-          '--disable-accelerated-2d-canvas',
-          '--no-first-run',
-          '--no-zygote',
-          '--disable-gpu',
-          '--single-process'
-        ]
-      });
+      try {
+        // Production vs Development configuration
+        const isProduction = process.env.NODE_ENV === 'production';
+        const executablePath = process.env.PUPPETEER_EXECUTABLE_PATH || 
+                              (isProduction ? '/usr/bin/chromium-browser' : undefined);
+
+        this.logger.log(`Launching browser in ${isProduction ? 'production' : 'development'} mode`);
+        
+        InvoiceService.browserInstance = await puppeteer.launch({
+          headless: 'new',
+          executablePath: executablePath,
+          args: [
+            '--no-sandbox',
+            '--disable-setuid-sandbox',
+            '--disable-dev-shm-usage',
+            '--disable-accelerated-2d-canvas',
+            '--no-first-run',
+            '--no-zygote',
+            '--disable-gpu',
+            '--disable-web-security',
+            '--disable-features=VizDisplayCompositor',
+            '--run-all-compositor-stages-before-draw',
+            '--memory-pressure-off',
+            ...(isProduction ? [
+              '--single-process', // Important for containerized environments
+              '--disable-background-timer-throttling',
+              '--disable-backgrounding-occluded-windows',
+              '--disable-renderer-backgrounding'
+            ] : [])
+          ],
+          timeout: 60000, // Increased timeout for production
+        });
+
+        this.logger.log('Browser launched successfully');
+      } catch (error) {
+        this.logger.error('Failed to launch browser:', {
+          error: error.message,
+          executablePath: process.env.PUPPETEER_EXECUTABLE_PATH,
+          nodeEnv: process.env.NODE_ENV
+        });
+        throw new Error(`Browser launch failed: ${error.message}`);
+      }
     }
     return InvoiceService.browserInstance;
   }

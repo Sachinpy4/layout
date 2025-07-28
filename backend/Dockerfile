@@ -32,9 +32,18 @@ RUN npm prune --production && \
 # =============================================================================
 FROM node:22.15.0-alpine AS production
 
-# Install security updates and curl for health check
+# Install security updates, curl for health check, and Chromium for Puppeteer
 RUN apk --no-cache upgrade && \
-    apk --no-cache add dumb-init curl && \
+    apk --no-cache add \
+        dumb-init \
+        curl \
+        chromium \
+        nss \
+        freetype \
+        freetype-dev \
+        harfbuzz \
+        ca-certificates \
+        ttf-freefont && \
     rm -rf /var/cache/apk/*
 
 # Set working directory
@@ -65,12 +74,14 @@ RUN mkdir -p uploads/images/exhibitions/headers \
     chown -R nestjs:nodejs uploads && \
     chmod -R 755 uploads
 
-# Set security-focused environment variables
+# Set security-focused environment variables + Puppeteer configuration
 ENV NODE_ENV=production \
     NODE_OPTIONS="--max-old-space-size=1024" \
     PORT=3001 \
     HELMET_ENABLED=true \
-    RATE_LIMITING_ENABLED=true
+    RATE_LIMITING_ENABLED=true \
+    PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true \
+    PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser
 
 # Expose port
 EXPOSE 3001

@@ -51,7 +51,7 @@ export class User {
 
   @Prop({
     trim: true,
-    match: /^[\+]?[1-9][\d]{0,15}$/,
+    match: /^[\+]?[0-9][\d]{0,15}$/,
   })
   phone?: string;
 
