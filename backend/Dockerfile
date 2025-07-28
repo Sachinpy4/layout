@@ -81,7 +81,9 @@ ENV NODE_ENV=production \
     HELMET_ENABLED=true \
     RATE_LIMITING_ENABLED=true \
     PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true \
-    PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser
+    PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser \
+    PUPPETEER_DISABLE_SETUID_SANDBOX=true \
+    PUPPETEER_NO_SANDBOX=true
 
 # Expose port
 EXPOSE 3001

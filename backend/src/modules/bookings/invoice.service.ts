@@ -403,44 +403,31 @@ export class InvoiceService {
   private async getBrowser(): Promise<Browser> {
     if (!InvoiceService.browserInstance || !InvoiceService.browserInstance.connected) {
       try {
-        // Production vs Development configuration
-        const isProduction = process.env.NODE_ENV === 'production';
-        const executablePath = process.env.PUPPETEER_EXECUTABLE_PATH || 
-                              (isProduction ? '/usr/bin/chromium-browser' : undefined);
-
-        this.logger.log(`Launching browser in ${isProduction ? 'production' : 'development'} mode`);
+        this.logger.log('Launching browser with simplified configuration');
         
-        InvoiceService.browserInstance = await puppeteer.launch({
-          headless: 'new',
-          executablePath: executablePath,
+        const puppeteerOptions: any = {
+          headless: true,
           args: [
             '--no-sandbox',
             '--disable-setuid-sandbox',
             '--disable-dev-shm-usage',
             '--disable-accelerated-2d-canvas',
-            '--no-first-run',
-            '--no-zygote',
-            '--disable-gpu',
-            '--disable-web-security',
-            '--disable-features=VizDisplayCompositor',
-            '--run-all-compositor-stages-before-draw',
-            '--memory-pressure-off',
-            ...(isProduction ? [
-              '--single-process', // Important for containerized environments
-              '--disable-background-timer-throttling',
-              '--disable-backgrounding-occluded-windows',
-              '--disable-renderer-backgrounding'
-            ] : [])
-          ],
-          timeout: 60000, // Increased timeout for production
-        });
+            '--disable-gpu'
+          ]
+        };
 
+        // Use custom Chrome executable path if specified in environment
+        const executablePath = process.env.PUPPETEER_EXECUTABLE_PATH;
+        if (executablePath) {
+          puppeteerOptions.executablePath = executablePath;
+        }
+
+        InvoiceService.browserInstance = await puppeteer.launch(puppeteerOptions);
         this.logger.log('Browser launched successfully');
       } catch (error) {
         this.logger.error('Failed to launch browser:', {
           error: error.message,
-          executablePath: process.env.PUPPETEER_EXECUTABLE_PATH,
-          nodeEnv: process.env.NODE_ENV
+          executablePath: process.env.PUPPETEER_EXECUTABLE_PATH
         });
         throw new Error(`Browser launch failed: ${error.message}`);
       }
