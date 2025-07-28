@@ -408,39 +408,83 @@ export class InvoiceService {
         const executablePath = process.env.PUPPETEER_EXECUTABLE_PATH || 
                               (isProduction ? '/usr/bin/chromium-browser' : undefined);
 
+        // Allow environment override for platform-specific args
+        const envArgs = process.env.PUPPETEER_ARGS ? process.env.PUPPETEER_ARGS.split(',') : [];
+
         this.logger.log(`Launching browser in ${isProduction ? 'production' : 'development'} mode`);
+        
+        const baseArgs = [
+          '--no-sandbox',
+          '--disable-setuid-sandbox',
+          '--disable-dev-shm-usage',
+          '--disable-accelerated-2d-canvas',
+          '--no-first-run',
+          '--no-zygote',
+          '--disable-gpu',
+          '--disable-web-security',
+          '--disable-features=VizDisplayCompositor',
+          '--run-all-compositor-stages-before-draw',
+          '--memory-pressure-off',
+          // Additional container-specific fixes
+          '--disable-background-networking',
+          '--disable-background-timer-throttling',
+          '--disable-backgrounding-occluded-windows',
+          '--disable-breakpad',
+          '--disable-client-side-phishing-detection',
+          '--disable-component-extensions-with-background-pages',
+          '--disable-default-apps',
+          '--disable-desktop-notifications',
+          '--disable-extensions',
+          '--disable-features=TranslateUI',
+          '--disable-hang-monitor',
+          '--disable-ipc-flooding-protection',
+          '--disable-popup-blocking',
+          '--disable-prompt-on-repost',
+          '--disable-renderer-backgrounding',
+          '--disable-sync',
+          '--force-color-profile=srgb',
+          '--metrics-recording-only',
+          '--no-default-browser-check',
+          '--no-first-run',
+          '--safebrowsing-disable-auto-update',
+          '--enable-automation',
+          '--password-store=basic',
+          '--use-mock-keychain',
+          ...(isProduction ? [
+            '--single-process', // Critical for containers
+            '--disable-background-timer-throttling',
+            '--disable-backgrounding-occluded-windows',
+            '--disable-renderer-backgrounding',
+            '--disable-dev-shm-usage', // Use disk instead of shared memory
+            '--memory-pressure-off',
+            '--max-old-space-size=512'
+          ] : [])
+        ];
+
+        // Merge environment args with base args (env args take precedence)
+        const finalArgs = envArgs.length > 0 ? [...baseArgs, ...envArgs] : baseArgs;
         
         InvoiceService.browserInstance = await puppeteer.launch({
           headless: 'new',
           executablePath: executablePath,
-          args: [
-            '--no-sandbox',
-            '--disable-setuid-sandbox',
-            '--disable-dev-shm-usage',
-            '--disable-accelerated-2d-canvas',
-            '--no-first-run',
-            '--no-zygote',
-            '--disable-gpu',
-            '--disable-web-security',
-            '--disable-features=VizDisplayCompositor',
-            '--run-all-compositor-stages-before-draw',
-            '--memory-pressure-off',
-            ...(isProduction ? [
-              '--single-process', // Important for containerized environments
-              '--disable-background-timer-throttling',
-              '--disable-backgrounding-occluded-windows',
-              '--disable-renderer-backgrounding'
-            ] : [])
-          ],
+          args: finalArgs,
           timeout: 60000, // Increased timeout for production
+          dumpio: isProduction, // Log browser console in production for debugging
+          ignoreDefaultArgs: ['--disable-extensions'], // Allow some extensions for debugging
         });
 
         this.logger.log('Browser launched successfully');
+        
+        // Test browser connection
+        const pages = await InvoiceService.browserInstance.pages();
+        this.logger.log(`Browser connected with ${pages.length} pages`);
+        
       } catch (error) {
         this.logger.error('Failed to launch browser:', {
           error: error.message,
           executablePath: process.env.PUPPETEER_EXECUTABLE_PATH,
-          nodeEnv: process.env.NODE_ENV
+          nodeEnv: process.env.NODE_ENV,
+          stack: error.stack
         });
         throw new Error(`Browser launch failed: ${error.message}`);
       }

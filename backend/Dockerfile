@@ -81,10 +81,17 @@ ENV NODE_ENV=production \
     HELMET_ENABLED=true \
     RATE_LIMITING_ENABLED=true \
     PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true \
-    PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser
+    PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser \
+    CHROME_BIN=/usr/bin/chromium-browser \
+    CHROME_PATH=/usr/bin/chromium-browser
 
 # Expose port
 EXPOSE 3001
+
+# Create tmp directory for Chromium
+RUN mkdir -p /tmp/.X11-unix && \
+    chmod 1777 /tmp/.X11-unix && \
+    chown root:root /tmp/.X11-unix
 
 # Switch to non-root user
 USER nestjs
@@ -96,5 +103,5 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
 # Use dumb-init for proper signal handling
 ENTRYPOINT ["dumb-init", "--"]
 
-# Start the application
-CMD ["node", "dist/main"] 
+# Start the application with memory settings for Chromium
+CMD ["node", "--max-old-space-size=1024", "dist/main"] 
