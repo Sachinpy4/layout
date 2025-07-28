@@ -391,7 +391,7 @@ export class InvoiceService {
         `
       });
 
-      return pdfBuffer;
+      return Buffer.from(pdfBuffer);
     } finally {
       await page.close();
     }
