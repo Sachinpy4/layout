@@ -342,6 +342,11 @@ export class BookingQueryDto {
   @IsOptional()
   @IsEnum(['asc', 'desc'])
   sortOrder?: 'asc' | 'desc';
+
+  @IsOptional()
+  @Transform(({ value }) => value === 'true' || value === true)
+  @IsBoolean()
+  enhanced?: boolean = false;
 }
 
 export class BookingStatsDto {

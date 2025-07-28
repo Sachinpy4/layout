@@ -84,7 +84,10 @@ class BookingService {
    */
   async getBooking(id: string): Promise<Booking> {
     try {
-      const response = await api.get<BookingResponse>(`${this.basePath}/${id}`);
+      // Add enhanced=true by default to get real-time calculations
+      const response = await api.get<BookingResponse>(`${this.basePath}/${id}`, {
+        params: { enhanced: true }
+      });
       return response.data.data;
     } catch (error: any) {
       throw new Error(error.response?.data?.message || 'Failed to fetch booking');
@@ -155,8 +158,13 @@ class BookingService {
    */
   async getMyBookings(params: BookingQueryParams = {}): Promise<BookingsListResponse['data']> {
     try {
+      // Add enhanced=true by default to get real-time calculations
+      const enhancedParams = {
+        ...params,
+        enhanced: true
+      };
       const response = await api.get<BookingsListResponse>(`${this.basePath}/me`, {
-        params
+        params: enhancedParams
       });
       return response.data.data;
     } catch (error: any) {

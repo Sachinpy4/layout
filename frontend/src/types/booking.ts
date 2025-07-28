@@ -179,6 +179,7 @@ export interface BookingQueryParams {
   endDate?: string;
   sortBy?: string;
   sortOrder?: 'asc' | 'desc';
+  enhanced?: boolean;
 }
 
 // Booking stats

@@ -208,7 +208,59 @@ export class InvoiceService {
     };
   }
 
+  /**
+   * Recalculate booking totals based on updated stall amounts
+   */
+  private recalculateBookingTotals(booking: any): void {
+    if (!booking.calculations?.stalls) return;
 
+    // Calculate new total base amount from all stalls
+    const newTotalBaseAmount = booking.calculations.stalls.reduce(
+      (sum: number, stall: any) => sum + (stall.baseAmount || 0), 
+      0
+    );
+
+    // Preserve original discount configuration
+    const originalDiscountAmount = booking.calculations.totalDiscountAmount || 0;
+    const originalBaseAmount = booking.calculations.totalBaseAmount || newTotalBaseAmount;
+    
+    // Calculate discount amount proportionally if there was an original discount
+    let newDiscountAmount = 0;
+    if (originalDiscountAmount > 0 && originalBaseAmount > 0) {
+      const discountPercentage = (originalDiscountAmount / originalBaseAmount) * 100;
+      newDiscountAmount = Math.round((newTotalBaseAmount * discountPercentage / 100) * 100) / 100;
+    }
+
+    // Calculate amount after discount
+    const newAmountAfterDiscount = newTotalBaseAmount - newDiscountAmount;
+
+    // Calculate taxes based on original tax rates
+    let newTotalTaxAmount = 0;
+    const updatedTaxes = booking.calculations.taxes?.map((tax: any) => {
+      const taxAmount = Math.round((newAmountAfterDiscount * tax.rate / 100) * 100) / 100;
+      newTotalTaxAmount += taxAmount;
+      return {
+        ...tax,
+        amount: taxAmount
+      };
+    }) || [];
+
+    // Calculate final total amount
+    const newTotalAmount = newAmountAfterDiscount + newTotalTaxAmount;
+
+    // Update booking calculations
+    booking.calculations.totalBaseAmount = Math.round(newTotalBaseAmount * 100) / 100;
+    booking.calculations.totalDiscountAmount = Math.round(newDiscountAmount * 100) / 100;
+    booking.calculations.totalAmountAfterDiscount = Math.round(newAmountAfterDiscount * 100) / 100;
+    booking.calculations.taxes = updatedTaxes;
+    booking.calculations.totalTaxAmount = Math.round(newTotalTaxAmount * 100) / 100;
+    booking.calculations.totalAmount = Math.round(newTotalAmount * 100) / 100;
+
+    // Also update the main booking amount field
+    booking.amount = Math.round(newTotalAmount * 100) / 100;
+
+    this.logger.log(`Recalculated booking totals: Base: ${newTotalBaseAmount}, Final: ${newTotalAmount}`);
+  }
 
   /**
    * Calculate stall area from dimensions
@@ -318,14 +370,28 @@ export class InvoiceService {
           const isValidRate = originalRate && !isNaN(originalRate) && originalRate > 0;
           const finalRate = isValidRate ? originalRate : (stallData?.ratePerSqm || 0);
           
+          // Calculate current area from updated dimensions
+          const currentDimensions = stallData?.dimensions;
+          const currentArea = currentDimensions 
+            ? Math.round(currentDimensions.width * currentDimensions.height * 100) / 100
+            : stall.area || 0;
+          
+          // Calculate new base amount using current area and rate
+          const newBaseAmount = Math.round(currentArea * finalRate * 100) / 100;
+          
           return {
             ...stall,
             dimensions: stallData?.dimensions || null,
             stallType: stallData?.stallType || null,
             stallTypeName: stallData?.stallTypeName || 'Standard Stall',
-            ratePerSqm: finalRate
+            ratePerSqm: finalRate,
+            area: currentArea,
+            baseAmount: newBaseAmount
           };
         });
+
+        // Recalculate booking totals based on updated stall amounts
+        this.recalculateBookingTotals(enhancedBooking);
       }
           } catch (error) {
         console.warn(`Failed to enhance booking with stall details for booking ${booking._id}:`, error.message);

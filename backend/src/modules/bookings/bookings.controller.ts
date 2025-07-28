@@ -90,6 +90,7 @@ export class BookingsController {
   @ApiQuery({ name: 'endDate', required: false, type: String, description: 'End date filter (ISO string)' })
   @ApiQuery({ name: 'sortBy', required: false, enum: ['createdAt', 'amount', 'customerName'] })
   @ApiQuery({ name: 'sortOrder', required: false, enum: ['asc', 'desc'] })
+  @ApiQuery({ name: 'enhanced', required: false, type: Boolean, description: 'Enable real-time calculation updates based on current layout' })
   @ApiResponse({ 
     status: 200, 
     description: 'Bookings retrieved successfully' 
@@ -277,6 +278,7 @@ export class BookingsController {
     description: 'Retrieve detailed information about a specific booking'
   })
   @ApiParam({ name: 'id', description: 'Booking ID' })
+  @ApiQuery({ name: 'enhanced', required: false, type: Boolean, description: 'Enable real-time calculation updates based on current layout' })
   @ApiResponse({ 
     status: 200, 
     description: 'Booking retrieved successfully',
@@ -285,9 +287,10 @@ export class BookingsController {
   @ApiResponse({ status: 404, description: 'Booking not found' })
   @ApiResponse({ status: 400, description: 'Invalid booking ID' })
   async findOne(
-    @Param('id') id: string
+    @Param('id') id: string,
+    @Query() query: { enhanced?: boolean }
   ): Promise<SuccessResponse<BookingResponseDto>> {
-    const booking = await this.bookingsService.findOne(id);
+    const booking = await this.bookingsService.findOne(id, query);
     
     return {
       success: true,

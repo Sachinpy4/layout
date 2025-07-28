@@ -133,6 +133,7 @@ export interface BookingQueryParams {
   endDate?: string;
   sortBy?: string;
   sortOrder?: 'asc' | 'desc';
+  enhanced?: boolean;
 }
 
 export interface BookingListResponse {
@@ -186,7 +187,12 @@ class BookingService {
   // Get all bookings with filters and pagination
   async getBookings(params: BookingQueryParams = {}): Promise<BookingListResponse> {
     try {
-      const response = await api.get(this.endpoint, { params });
+      // Add enhanced=true by default to get real-time calculations
+      const enhancedParams = {
+        ...params,
+        enhanced: true
+      };
+      const response = await api.get(this.endpoint, { params: enhancedParams });
       return response.data;
     } catch (error: any) {
       throw new Error(error.response?.data?.message || 'Failed to fetch bookings');
